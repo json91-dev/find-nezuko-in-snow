@@ -123,3 +123,136 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Snow particle CSS animation for UI screens */
+@keyframes snowfall {
+  0% {
+    transform: translateY(-10vh) translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) translateX(20px);
+    opacity: 0.3;
+  }
+}
+
+@keyframes snowfall-drift {
+  0% {
+    transform: translateY(-10vh) translateX(0);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(50vh) translateX(-15px);
+  }
+  100% {
+    transform: translateY(110vh) translateX(10px);
+    opacity: 0.2;
+  }
+}
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(74, 158, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(74, 158, 255, 0.6);
+  }
+}
+
+@keyframes text-glow {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(74, 158, 255, 0.5), 0 0 30px rgba(74, 158, 255, 0.2);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(74, 158, 255, 0.8), 0 0 50px rgba(74, 158, 255, 0.4);
+  }
+}
+
+@keyframes warm-glow {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(255, 180, 50, 0.5), 0 0 30px rgba(255, 180, 50, 0.2);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(255, 180, 50, 0.8), 0 0 50px rgba(255, 180, 50, 0.4);
+  }
+}
+
+@keyframes red-pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes crack-appear {
+  0% {
+    clip-path: inset(50% 50% 50% 50%);
+    opacity: 0;
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+
+@keyframes screen-shake {
+  0%, 100% { transform: translate(0); }
+  10% { transform: translate(-5px, 3px); }
+  20% { transform: translate(4px, -4px); }
+  30% { transform: translate(-3px, 2px); }
+  40% { transform: translate(5px, -2px); }
+  50% { transform: translate(-2px, 4px); }
+  60% { transform: translate(3px, -3px); }
+  70% { transform: translate(-4px, 1px); }
+  80% { transform: translate(2px, -5px); }
+  90% { transform: translate(-1px, 3px); }
+}
+
+.snow-particle {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: snowfall linear infinite;
+}
+
+.snow-particle-drift {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: snowfall-drift linear infinite;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-text-glow {
+  animation: text-glow 2s ease-in-out infinite;
+}
+
+.animate-warm-glow {
+  animation: warm-glow 2s ease-in-out infinite;
+}
+
+.animate-screen-shake {
+  animation: screen-shake 0.5s ease-in-out;
+}
