@@ -23,9 +23,14 @@ export default function Sister({ position, playerPosition, onPositionUpdate }: S
   const { actions, names } = useAnimations(animations, groupRef);
 
   const currentPositionRef = useRef(position.clone());
-  const moveDirection = useRef(new Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize());
+  const moveDirection = useRef<Vector3>(new Vector3(1, 0, 0));
   const currentAction = useRef<AnimationAction | null>(null);
-  const lastDirectionChange = useRef(Date.now());
+  const lastDirectionChange = useRef(0);
+
+  useEffect(() => {
+    moveDirection.current = new Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
+    lastDirectionChange.current = Date.now();
+  }, []);
 
   // Use state for audio position so the hook gets updated values
   const [audioPosition, setAudioPosition] = useState(() => position.clone());

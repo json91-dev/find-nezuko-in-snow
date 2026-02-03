@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo } from "react";
+import { useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Points, PointMaterial } from "@react-three/drei";
 import * as THREE from "three";
@@ -20,7 +20,7 @@ function BlizzardLayer({
 }) {
   const pointsRef = useRef<THREE.Points>(null);
 
-  const particles = useMemo(() => {
+  const [particles] = useState(() => {
     const positions = new Float32Array(count * 3);
     const velocities = new Float32Array(count * 3);
 
@@ -36,7 +36,7 @@ function BlizzardLayer({
     }
 
     return { positions, velocities };
-  }, [count]);
+  });
 
   useFrame((_, delta) => {
     if (!pointsRef.current) return;
@@ -93,7 +93,7 @@ function GentleSnowLayer({
 }) {
   const pointsRef = useRef<THREE.Points>(null);
 
-  const particles = useMemo(() => {
+  const [particles] = useState(() => {
     const positions = new Float32Array(count * 3);
     const velocities = new Float32Array(count * 3);
     const phases = new Float32Array(count); // for sine sway
@@ -112,7 +112,7 @@ function GentleSnowLayer({
     }
 
     return { positions, velocities, phases };
-  }, [count]);
+  });
 
   useFrame(({ clock }, delta) => {
     if (!pointsRef.current) return;
@@ -145,13 +145,13 @@ function GentleSnowLayer({
   });
 
   // Varying particle sizes via custom sizes attribute
-  const sizes = useMemo(() => {
+  const [sizes] = useState(() => {
     const s = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-      s[i] = 0.05 + Math.random() * 0.1; // 0.05-0.15
+      s[i] = 0.05 + Math.random() * 0.1;
     }
     return s;
-  }, [count]);
+  });
 
   return (
     <Points ref={pointsRef} limit={count}>

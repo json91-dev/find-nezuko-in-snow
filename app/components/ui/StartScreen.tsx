@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState } from "react";
 
 interface StartScreenProps {
   onStart: () => void;
 }
 
 function SnowParticles() {
-  const particles = useMemo(() => {
-    return Array.from({ length: 60 }, (_, i) => ({
+  const [particles] = useState(() =>
+    Array.from({ length: 60 }, (_, i) => ({
       id: i,
       left: Math.random() * 100,
       size: 2 + Math.random() * 4,
@@ -16,8 +16,8 @@ function SnowParticles() {
       delay: Math.random() * 10,
       drift: Math.random() > 0.5,
       opacity: 0.3 + Math.random() * 0.5,
-    }));
-  }, []);
+    }))
+  );
 
   return (
     <>

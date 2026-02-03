@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { Suspense, useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { Suspense, useState, useCallback, useRef, useEffect } from "react";
 import { Vector3 } from "three";
 import Player from "./Player";
 import ThirdPersonCamera from "./ThirdPersonCamera";
@@ -49,15 +49,15 @@ export default function Game({ gameState, onClear, onGameOver }: GameProps) {
   );
 
   // Demon initial positions - spread evenly around the map
-  const demonInitialPositions = useMemo(() => {
+  const [demonInitialPositions] = useState<Vector3[]>(() => {
     const positions: Vector3[] = [];
     for (let i = 0; i < DEMON_COUNT; i++) {
       const angle = (Math.PI * 2 * i) / DEMON_COUNT + (Math.random() - 0.5) * 0.8;
-      const dist = 15 + Math.random() * 45; // 15-60m from origin
+      const dist = 15 + Math.random() * 45;
       positions.push(new Vector3(Math.cos(angle) * dist, 0, Math.sin(angle) * dist));
     }
     return positions;
-  }, []);
+  });
 
   // Track demon positions
   const [demonPositions, setDemonPositions] = useState<Vector3[]>(

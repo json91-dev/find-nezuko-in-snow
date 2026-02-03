@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 
 interface GameHUDProps {
   isPlaying: boolean;
@@ -12,26 +12,47 @@ function formatTime(seconds: number): string {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
+let elapsedSeconds = 0;
+let listeners: Array<() => void> = [];
+function subscribe(listener: () => void) {
+  listeners.push(listener);
+  return () => {
+    listeners = listeners.filter((l) => l !== listener);
+  };
+}
+function getSnapshot() {
+  return elapsedSeconds;
+}
+function notify() {
+  for (const listener of listeners) listener();
+}
+
 export default function GameHUD({ isPlaying }: GameHUDProps) {
-  const [elapsed, setElapsed] = useState(0);
   const startTimeRef = useRef<number | null>(null);
   const rafRef = useRef<number>(0);
+
+  const elapsed = useSyncExternalStore(subscribe, getSnapshot, () => 0);
 
   useEffect(() => {
     if (!isPlaying) {
       startTimeRef.current = null;
-      setElapsed(0);
+      elapsedSeconds = 0;
+      notify();
       return;
     }
 
     startTimeRef.current = Date.now();
 
-    const tick = () => {
+    function tick() {
       if (startTimeRef.current) {
-        setElapsed((Date.now() - startTimeRef.current) / 1000);
+        const newElapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        if (newElapsed !== elapsedSeconds) {
+          elapsedSeconds = newElapsed;
+          notify();
+        }
       }
       rafRef.current = requestAnimationFrame(tick);
-    };
+    }
 
     rafRef.current = requestAnimationFrame(tick);
 

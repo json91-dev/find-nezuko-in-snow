@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF, useAnimations } from "@react-three/drei";
 import { Group, Vector3, AnimationAction } from "three";
@@ -19,15 +19,18 @@ const MAP_BOUNDARY = 70;
 export default function BloodDemon({ initialPosition, onPositionUpdate, id }: BloodDemonProps) {
   const groupRef = useRef<Group>(null);
   const { scene, animations } = useGLTF("/model/blooddemon.glb");
-  const clonedScene = useRef(scene.clone());
+  const [clonedScene] = useState(() => scene.clone());
   const { actions, names } = useAnimations(animations, groupRef);
 
   const currentPosition = useRef(initialPosition.clone());
-  const moveDirection = useRef(
-    new Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize()
-  );
+  const moveDirection = useRef<Vector3>(new Vector3(1, 0, 0));
   const currentAction = useRef<AnimationAction | null>(null);
-  const lastDirectionChange = useRef(Date.now());
+  const lastDirectionChange = useRef(0);
+
+  useEffect(() => {
+    moveDirection.current = new Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
+    lastDirectionChange.current = Date.now();
+  }, []);
 
   // Setup walk animation
   useEffect(() => {
@@ -88,7 +91,7 @@ export default function BloodDemon({ initialPosition, onPositionUpdate, id }: Bl
 
   return (
     <group ref={groupRef} position={[initialPosition.x, initialPosition.y, initialPosition.z]}>
-      <primitive object={clonedScene.current} scale={1} />
+      <primitive object={clonedScene} scale={1} />
     </group>
   );
 }
