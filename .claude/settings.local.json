@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(find:*)",
+      "Bash(tree:*)",
+      "Bash(ls:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: Phase 1 - timer HUD, mouse controls, audio, animation fixes\n\n- Add in-game timer HUD showing elapsed time during gameplay\n- Replace pointer lock with mouse hold-to-move and drag-to-rotate\n- Fix positional audio: proper position updates, 3-8s random intervals\n- Always play run animation, rotate model 180° to show character''s back\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Phase 2 - UI/UX redesign with winter + Demon Slayer theme\n\n- Dark navy/glacier blue/blood red color palette\n- Glassmorphism card effects with backdrop blur\n- CSS snow particle animations on start screen\n- Glowing text effects for titles\n- Redesigned StartScreen, ClearScreen, RankingScreen\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Phases 3-5 - minimap, footprints, snow, demons, transitions\n\n- Add circular minimap showing player/sister/demon positions\n- Add footprint shader effect with 4-5s fade-out\n- Add gentle slow-falling snow layer with sine-wave sway\n- Add blood demon enemy system \\(5 random demons, game over on contact\\)\n- Add dark/red screen effect when near demons\n- Add transition effects: white fade for clear, red flash for game over\n- Add GameOverScreen with Demon Slayer themed dark red UI\n- Integrate all new systems into Game.tsx and page.tsx\nEOF\n\\)\")",
+      "Bash(npm run lint:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)",
+      "Bash(git log:*)"
+    ]
+  }
+}
