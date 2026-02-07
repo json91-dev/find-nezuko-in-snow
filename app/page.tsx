@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import StartScreen from "./components/ui/StartScreen";
 import ClearScreen from "./components/ui/ClearScreen";
@@ -40,12 +40,28 @@ export default function Home() {
     enabled: gameState === "playing",
   });
 
+  // Toggle body class for touch-action prevention during gameplay
+  useEffect(() => {
+    document.body.classList.toggle("gaming", gameState === "playing");
+    return () => document.body.classList.remove("gaming");
+  }, [gameState]);
+
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
   const handleStart = useCallback(() => {
-    setGameState("playing");
+    setGameState("loading");
+    setLoadingProgress(0);
     setIsRecordSaved(false);
     setCurrentRecordId(undefined);
     setIsTransitioning(false);
     setTransitionType(null);
+  }, []);
+
+  const handleLoadingProgress = useCallback((progress: number) => {
+    setLoadingProgress(progress);
+    if (progress >= 100) {
+      setGameState((prev) => (prev === "loading" ? "playing" : prev));
+    }
   }, []);
 
   const handleClear = useCallback((elapsedTime: number) => {
@@ -55,6 +71,15 @@ export default function Home() {
   }, []);
 
   const handleGameOver = useCallback((elapsedTime: number) => {
+    // Play death sound effect
+    try {
+      const deathSound = new Audio("/audio/swordman-dead.MP3");
+      deathSound.volume = 0.5;
+      deathSound.play().catch(() => {});
+    } catch {
+      // Ignore audio errors
+    }
+
     setPendingTime(elapsedTime);
     setTransitionType("gameover");
     setIsTransitioning(true);
@@ -106,10 +131,19 @@ export default function Home() {
           gameState={gameState}
           onClear={handleClear}
           onGameOver={handleGameOver}
+          onLoadingProgress={handleLoadingProgress}
         />
       )}
 
       {gameState === "start" && <StartScreen onStart={handleStart} />}
+
+      {gameState === "loading" && (
+        <StartScreen
+          onStart={handleStart}
+          isLoading
+          loadingProgress={loadingProgress}
+        />
+      )}
 
       {/* Transition effects */}
       {isTransitioning && transitionType && (

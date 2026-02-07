@@ -1,6 +1,7 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
+import { useProgress } from "@react-three/drei";
 import { Suspense, useState, useCallback, useRef, useEffect } from "react";
 import { Vector3 } from "three";
 import Player from "./Player";
@@ -14,19 +15,29 @@ import Footprints from "./Footprints";
 import GameHUD from "../ui/GameHUD";
 import Minimap from "../ui/Minimap";
 
-export type GameState = "start" | "playing" | "clear" | "gameover";
+export type GameState = "start" | "loading" | "playing" | "clear" | "gameover";
 
 interface GameProps {
   gameState: GameState;
   onClear: (elapsedTime: number) => void;
   onGameOver: (elapsedTime: number) => void;
+  onLoadingProgress?: (progress: number) => void;
 }
 
-const DEMON_COUNT = 5;
+const DEMON_COUNT = 10;
 const DEMON_KILL_DISTANCE = 2;
 const DEMON_DARK_DISTANCE = 15;
 
-export default function Game({ gameState, onClear, onGameOver }: GameProps) {
+// Track loading progress and report to parent
+function LoadingTracker({ onProgress }: { onProgress: (progress: number) => void }) {
+  const { progress } = useProgress();
+  useEffect(() => {
+    onProgress(progress);
+  }, [progress, onProgress]);
+  return null;
+}
+
+export default function Game({ gameState, onClear, onGameOver, onLoadingProgress }: GameProps) {
   const [playerPosition, setPlayerPosition] = useState<Vector3>(
     () => new Vector3(0, 0, 0)
   );
@@ -121,6 +132,13 @@ export default function Game({ gameState, onClear, onGameOver }: GameProps) {
     [sisterCurrentPosition, demonPositions, gameState, onClear, onGameOver]
   );
 
+  const handleLoadingProgress = useCallback(
+    (progress: number) => {
+      onLoadingProgress?.(progress);
+    },
+    [onLoadingProgress]
+  );
+
   if (gameState === "start") {
     return null;
   }
@@ -145,6 +163,7 @@ export default function Game({ gameState, onClear, onGameOver }: GameProps) {
           shadow-mapSize={[2048, 2048]}
         />
 
+        <LoadingTracker onProgress={handleLoadingProgress} />
         <Suspense fallback={null}>
           <Player
             onPositionUpdate={handlePositionUpdate}

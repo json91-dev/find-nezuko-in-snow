@@ -65,47 +65,42 @@ export default function Minimap({
 
     const scale = MINIMAP_SIZE / mapSize;
 
-    // Helper: world position to minimap position
+    // Rotate entire map so player's facing direction points up (compass mode)
+    ctx.save();
+    ctx.translate(MINIMAP_RADIUS, MINIMAP_RADIUS);
+    ctx.rotate(playerRotation);
+    ctx.translate(-MINIMAP_RADIUS, -MINIMAP_RADIUS);
+
+    // Helper: world position to minimap position (player-centered)
     const toMinimap = (worldPos: Vector3) => {
-      const x = MINIMAP_RADIUS + worldPos.x * scale;
-      const z = MINIMAP_RADIUS + worldPos.z * scale;
-      return { x, z };
+      const relX = (worldPos.x - playerPosition.x) * scale;
+      const relZ = (worldPos.z - playerPosition.z) * scale;
+      return { x: MINIMAP_RADIUS + relX, z: MINIMAP_RADIUS + relZ };
     };
 
     // Draw demons (red dots)
     demonPositions.forEach((demonPos) => {
       const { x, z } = toMinimap(demonPos);
-      if (x >= 0 && x <= MINIMAP_SIZE && z >= 0 && z <= MINIMAP_SIZE) {
-        ctx.fillStyle = "rgba(220, 38, 38, 0.8)";
-        ctx.beginPath();
-        ctx.arc(x, z, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      ctx.fillStyle = "rgba(220, 38, 38, 0.8)";
+      ctx.beginPath();
+      ctx.arc(x, z, 3, 0, Math.PI * 2);
+      ctx.fill();
     });
 
-    // Draw sister (cyan dot)
+    // Draw sister (same color as demons for difficulty)
     const sis = toMinimap(sisterPosition);
-    if (sis.x >= 0 && sis.x <= MINIMAP_SIZE && sis.z >= 0 && sis.z <= MINIMAP_SIZE) {
-      ctx.fillStyle = "rgba(74, 220, 255, 0.9)";
-      ctx.beginPath();
-      ctx.arc(sis.x, sis.z, 3.5, 0, Math.PI * 2);
-      ctx.fill();
+    ctx.fillStyle = "rgba(220, 38, 38, 0.8)";
+    ctx.beginPath();
+    ctx.arc(sis.x, sis.z, 3, 0, Math.PI * 2);
+    ctx.fill();
 
-      // Pulsing ring
-      ctx.strokeStyle = "rgba(74, 220, 255, 0.3)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(sis.x, sis.z, 6, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+    ctx.restore(); // undo compass rotation
 
-    // Draw player (white arrow pointing in rotation direction)
-    const player = toMinimap(playerPosition);
+    // Draw player arrow (always points up = forward direction)
     ctx.save();
-    ctx.translate(player.x, player.z);
-    ctx.rotate(-playerRotation);
+    ctx.translate(MINIMAP_RADIUS, MINIMAP_RADIUS);
 
-    // Arrow shape
+    // Arrow shape pointing up
     ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
     ctx.beginPath();
     ctx.moveTo(0, -6);    // tip

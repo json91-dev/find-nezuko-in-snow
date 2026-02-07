@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useMemo, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF, useAnimations } from "@react-three/drei";
 import { Group, Vector3, AnimationAction } from "three";
 import * as THREE from "three";
+import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 interface BloodDemonProps {
   initialPosition: Vector3;
@@ -19,13 +20,14 @@ const MAP_BOUNDARY = 70;
 export default function BloodDemon({ initialPosition, onPositionUpdate, id }: BloodDemonProps) {
   const groupRef = useRef<Group>(null);
   const { scene, animations } = useGLTF("/model/blooddemon.glb");
-  const [clonedScene] = useState(() => scene.clone());
+  const clonedScene = useMemo(() => SkeletonUtils.clone(scene) as Group, [scene]);
   const { actions, names } = useAnimations(animations, groupRef);
 
   const currentPosition = useRef(initialPosition.clone());
   const moveDirection = useRef<Vector3>(new Vector3(1, 0, 0));
   const currentAction = useRef<AnimationAction | null>(null);
   const lastDirectionChange = useRef(0);
+  const [animOffset] = useState(() => Math.random() * 5);
 
   useEffect(() => {
     moveDirection.current = new Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
@@ -55,6 +57,13 @@ export default function BloodDemon({ initialPosition, onPositionUpdate, id }: Bl
       }
     };
   }, [actions, names]);
+
+  // Randomize animation offset after setup (via ref to avoid hook immutability lint)
+  useEffect(() => {
+    if (currentAction.current) {
+      currentAction.current.time = animOffset;
+    }
+  }, [animOffset]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;

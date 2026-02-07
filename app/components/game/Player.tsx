@@ -60,6 +60,12 @@ export default function Player({ onPositionUpdate, isPlaying }: PlayerProps) {
     const handleMouseDown = (e: MouseEvent) => {
       if (e.button === 0) {
         isMouseDown.current = true;
+        // Snap rotation toward click point
+        const screenCenterX = window.innerWidth / 2;
+        const offsetX = e.clientX - screenCenterX;
+        const normalizedOffset = offsetX / screenCenterX; // -1 to 1
+        const snapAngle = normalizedOffset * (Math.PI / 3); // max 60°
+        rotation.current -= snapAngle;
       }
     };
     const handleMouseUp = (e: MouseEvent) => {
@@ -91,6 +97,52 @@ export default function Player({ onPositionUpdate, isPlaying }: PlayerProps) {
     };
   }, [isPlaying]);
 
+  // Touch controls: tap to move forward, swipe to rotate
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    let lastTouchX = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      isMouseDown.current = true;
+      lastTouchX = e.touches[0].clientX;
+      // Snap rotation toward touch point
+      const screenCenterX = window.innerWidth / 2;
+      const offsetX = e.touches[0].clientX - screenCenterX;
+      const normalizedOffset = offsetX / screenCenterX;
+      const snapAngle = normalizedOffset * (Math.PI / 3);
+      rotation.current -= snapAngle;
+    };
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      if (!isMouseDown.current || e.touches.length === 0) return;
+      const deltaX = e.touches[0].clientX - lastTouchX;
+      mouseMovement.current.x += deltaX;
+      lastTouchX = e.touches[0].clientX;
+    };
+    const handleTouchEnd = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length === 0) {
+        isMouseDown.current = false;
+      }
+    };
+
+    const opts: AddEventListenerOptions = { passive: false };
+    document.addEventListener("touchstart", handleTouchStart, opts);
+    document.addEventListener("touchmove", handleTouchMove, opts);
+    document.addEventListener("touchend", handleTouchEnd, opts);
+    document.addEventListener("touchcancel", handleTouchEnd, opts);
+
+    return () => {
+      document.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
+      document.removeEventListener("touchcancel", handleTouchEnd);
+      isMouseDown.current = false;
+    };
+  }, [isPlaying]);
+
   // Always play animation
   useEffect(() => {
     const walkAnimName = getWalkAnimation();
@@ -111,8 +163,8 @@ export default function Player({ onPositionUpdate, isPlaying }: PlayerProps) {
   useFrame((_, delta) => {
     if (!groupRef.current || !isPlaying) return;
 
-    // Apply mouse rotation (only when mouse is held)
-    rotation.current -= mouseMovement.current.x * 0.003;
+    // Apply mouse rotation (only when mouse is held, 1.5x sensitivity)
+    rotation.current -= mouseMovement.current.x * 0.0045;
     mouseMovement.current.x = 0;
 
     // Calculate movement direction

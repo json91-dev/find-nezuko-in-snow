@@ -41,7 +41,7 @@ export default function ClearScreen({
 
           {/* Title */}
           <h1 className="animate-warm-glow mb-2 text-center text-3xl font-black tracking-wider text-amber-100">
-            여동생을 찾았습니다!
+            네즈코을 찾았습니다!
           </h1>
 
           {/* Time */}
@@ -103,8 +103,8 @@ export default function ClearScreen({
               onClick={() => {
                 if (navigator.share) {
                   navigator.share({
-                    title: "눈보라 속 여동생 찾기",
-                    text: `${formatTime(clearTime)}에 여동생을 찾았습니다!`,
+                    title: "눈보라 속 네즈코 찾기",
+                    text: `${formatTime(clearTime)}에 네즈코을 찾았습니다!`,
                     url: window.location.href,
                   });
                 }

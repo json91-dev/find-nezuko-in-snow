@@ -223,6 +223,7 @@
 
 .snow-particle {
   position: absolute;
+  top: 0;
   background: white;
   border-radius: 50%;
   pointer-events: none;
@@ -231,6 +232,7 @@
 
 .snow-particle-drift {
   position: absolute;
+  top: 0;
   background: white;
   border-radius: 50%;
   pointer-events: none;
@@ -255,4 +257,13 @@
 
 .animate-screen-shake {
   animation: screen-shake 0.5s ease-in-out;
+}
+
+/* Prevent touch scrolling/zooming during gameplay */
+body.gaming {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  overscroll-behavior: none;
 }

@@ -31,8 +31,10 @@ export default function usePositionalAudio({
   // Store positions in refs for RAF access
   const sourcePositionRef = useRef(sourcePosition);
   const listenerPositionRef = useRef(listenerPosition);
+  const maxDistanceRef = useRef(maxDistance);
   sourcePositionRef.current = sourcePosition;
   listenerPositionRef.current = listenerPosition;
+  maxDistanceRef.current = maxDistance;
 
   const playNextSound = useCallback(() => {
     const ctx = audioContextRef.current;
@@ -80,7 +82,7 @@ export default function usePositionalAudio({
         panner.distanceModel = "inverse";
         panner.refDistance = refDistance;
         panner.maxDistance = maxDistance;
-        panner.rolloffFactor = 0.5;
+        panner.rolloffFactor = 2;
         panner.coneInnerAngle = 360;
         panner.coneOuterAngle = 0;
         panner.coneOuterGain = 0;
@@ -162,6 +164,19 @@ export default function usePositionalAudio({
         listener.positionX.setValueAtTime(lp.x, ctx.currentTime);
         listener.positionY.setValueAtTime(lp.y, ctx.currentTime);
         listener.positionZ.setValueAtTime(lp.z, ctx.currentTime);
+      }
+
+      // Manual gain-based distance attenuation (cubic falloff)
+      const gain = gainRef.current;
+      if (gain) {
+        const distance = Math.sqrt(
+          (sp.x - lp.x) ** 2 + (sp.y - lp.y) ** 2 + (sp.z - lp.z) ** 2
+        );
+        const md = maxDistanceRef.current;
+        const t = Math.min(distance / md, 1);
+        // Cubic falloff: near=loud, mid=steep drop, far=nearly silent
+        const volume = t >= 1 ? 0 : Math.pow(1 - t, 3);
+        gain.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
       }
 
       animationId = requestAnimationFrame(updatePositions);

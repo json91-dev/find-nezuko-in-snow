@@ -4,19 +4,24 @@ import { useState } from "react";
 
 interface StartScreenProps {
   onStart: () => void;
+  isLoading?: boolean;
+  loadingProgress?: number;
 }
 
 function SnowParticles() {
   const [particles] = useState(() =>
-    Array.from({ length: 60 }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      size: 2 + Math.random() * 4,
-      duration: 8 + Math.random() * 12,
-      delay: Math.random() * 10,
-      drift: Math.random() > 0.5,
-      opacity: 0.3 + Math.random() * 0.5,
-    }))
+    Array.from({ length: 60 }, (_, i) => {
+      const duration = 8 + Math.random() * 12;
+      return {
+        id: i,
+        left: Math.random() * 100,
+        size: (2 + Math.random() * 4) * 1.4,
+        duration,
+        delay: -(Math.random() * duration), // negative delay = start mid-animation
+        drift: Math.random() > 0.5,
+        opacity: 0.3 + Math.random() * 0.5,
+      };
+    })
   );
 
   return (
@@ -39,9 +44,9 @@ function SnowParticles() {
   );
 }
 
-export default function StartScreen({ onStart }: StartScreenProps) {
+export default function StartScreen({ onStart, isLoading, loadingProgress = 0 }: StartScreenProps) {
   return (
-    <div className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-gradient-to-b from-[#0a1628] via-[#0f2240] to-[#162d50]">
+    <div className={`${isLoading ? "absolute inset-0 z-50" : "relative"} flex h-screen w-screen items-center justify-center overflow-hidden bg-gradient-to-b from-[#0a1628] via-[#0f2240] to-[#162d50]`}>
       <SnowParticles />
 
       {/* Subtle radial glow */}
@@ -58,14 +63,16 @@ export default function StartScreen({ onStart }: StartScreenProps) {
             눈보라 속
           </h1>
           <h1 className="animate-text-glow mb-6 text-center text-4xl font-black tracking-wider text-white">
-            여동생 찾기
+            네즈코 찾기
           </h1>
 
           {/* Subtitle */}
           <p className="mb-8 text-center text-sm leading-relaxed text-blue-200/70">
-            눈보라 속에서 길을 잃은 여동생을 찾아주세요.
+            눈보라 속에서 길을 잃은 네즈코을 찾아주세요.
             <br />
             울음소리와 색감만이 유일한 단서입니다.
+            <br />
+            중간에 혈귀를 만나면 게임이 종료되니 잘 피해주세요.
           </p>
 
           {/* Controls info */}
@@ -96,13 +103,27 @@ export default function StartScreen({ onStart }: StartScreenProps) {
             </p>
           </div>
 
-          {/* Start button */}
-          <button
-            onClick={onStart}
-            className="animate-pulse-glow w-full rounded-xl border border-[#4a9eff]/30 bg-gradient-to-r from-[#4a9eff]/20 to-[#6db3ff]/20 px-8 py-4 text-lg font-bold tracking-widest text-white transition-all hover:from-[#4a9eff]/40 hover:to-[#6db3ff]/40 active:scale-[0.98]"
-          >
-            시작하기
-          </button>
+          {/* Start button or loading progress */}
+          {isLoading ? (
+            <div className="w-full">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#4a9eff] to-[#6db3ff] transition-all duration-300"
+                  style={{ width: `${loadingProgress}%` }}
+                />
+              </div>
+              <p className="mt-3 text-center text-xs text-blue-300/60">
+                리소스 로딩 중... {Math.round(loadingProgress)}%
+              </p>
+            </div>
+          ) : (
+            <button
+              onClick={onStart}
+              className="animate-pulse-glow w-full rounded-xl border border-[#4a9eff]/30 bg-gradient-to-r from-[#4a9eff]/20 to-[#6db3ff]/20 px-8 py-4 text-lg font-bold tracking-widest text-white transition-all hover:from-[#4a9eff]/40 hover:to-[#6db3ff]/40 active:scale-[0.98]"
+            >
+              시작하기
+            </button>
+          )}
 
           {/* Decorative bottom border */}
           <div className="mx-auto mt-6 h-[2px] w-24 bg-gradient-to-r from-transparent via-[#4a9eff] to-transparent" />
