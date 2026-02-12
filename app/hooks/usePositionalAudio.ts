@@ -41,7 +41,8 @@ export default function usePositionalAudio({
     const panner = pannerRef.current;
     const buffers = buffersRef.current;
 
-    if (!ctx || !panner || buffers.length === 0 || !isPlayingRef.current) return;
+    if (!ctx || !panner || buffers.length === 0 || !isPlayingRef.current)
+      return;
 
     if (ctx.state === "suspended") {
       ctx.resume();
@@ -55,7 +56,8 @@ export default function usePositionalAudio({
 
     source.onended = () => {
       if (isPlayingRef.current) {
-        currentIndexRef.current = (currentIndexRef.current + 1) % buffers.length;
+        currentIndexRef.current =
+          (currentIndexRef.current + 1) % buffers.length;
         const delay = 3000 + Math.random() * 5000; // 3-8s random interval
         timeoutRef.current = setTimeout(playNextSound, delay);
       }
@@ -73,7 +75,13 @@ export default function usePositionalAudio({
 
     const initAudio = async () => {
       try {
-        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext;
+        const AudioCtx =
+          window.AudioContext ||
+          (
+            window as unknown as {
+              webkitAudioContext: typeof window.AudioContext;
+            }
+          ).webkitAudioContext;
         const ctx = new AudioCtx();
         audioContextRef.current = ctx;
 
@@ -131,13 +139,17 @@ export default function usePositionalAudio({
       isPlayingRef.current = false;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (sourceNodeRef.current) {
-        try { sourceNodeRef.current.stop(); } catch { /* already stopped */ }
+        try {
+          sourceNodeRef.current.stop();
+        } catch {
+          /* already stopped */
+        }
       }
       if (audioContextRef.current) {
         audioContextRef.current.close();
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update panner and listener positions every frame via RAF

@@ -14,7 +14,7 @@ export default function Ground() {
       receiveShadow
     >
       <planeGeometry args={[500, 500]} />
-      <meshStandardMaterial color="#f5f5f5" roughness={0.8} />
+      <meshStandardMaterial color="#95a5b5" roughness={0.85} />
     </mesh>
   );
 }

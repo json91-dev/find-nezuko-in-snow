@@ -6,6 +6,7 @@ import { Vector3 } from "three";
 interface MinimapProps {
   playerPosition: Vector3;
   playerRotation: number;
+  playerFacing: number;
   sisterPosition: Vector3;
   demonPositions: Vector3[];
   mapSize?: number;
@@ -17,6 +18,7 @@ const MINIMAP_RADIUS = MINIMAP_SIZE / 2;
 export default function Minimap({
   playerPosition,
   playerRotation,
+  playerFacing,
   sisterPosition,
   demonPositions,
   mapSize = 160,
@@ -68,7 +70,7 @@ export default function Minimap({
     // Rotate entire map so player's facing direction points up (compass mode)
     ctx.save();
     ctx.translate(MINIMAP_RADIUS, MINIMAP_RADIUS);
-    ctx.rotate(playerRotation);
+    ctx.rotate(-playerRotation);
     ctx.translate(-MINIMAP_RADIUS, -MINIMAP_RADIUS);
 
     // Helper: world position to minimap position (player-centered)
@@ -96,9 +98,11 @@ export default function Minimap({
 
     ctx.restore(); // undo compass rotation
 
-    // Draw player arrow (always points up = forward direction)
+    // Draw player arrow (rotated to show facing direction)
     ctx.save();
     ctx.translate(MINIMAP_RADIUS, MINIMAP_RADIUS);
+    const facingOffset = playerFacing - playerRotation;
+    ctx.rotate(-facingOffset);
 
     // Arrow shape pointing up
     ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
@@ -119,7 +123,7 @@ export default function Minimap({
     ctx.beginPath();
     ctx.arc(MINIMAP_RADIUS, MINIMAP_RADIUS, MINIMAP_RADIUS - 1, 0, Math.PI * 2);
     ctx.stroke();
-  }, [playerPosition, playerRotation, sisterPosition, demonPositions, mapSize]);
+  }, [playerPosition, playerRotation, playerFacing, sisterPosition, demonPositions, mapSize]);
 
   return (
     <div className="pointer-events-none absolute bottom-6 right-6 z-20">

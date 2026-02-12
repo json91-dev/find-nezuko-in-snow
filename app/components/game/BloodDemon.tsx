@@ -11,13 +11,16 @@ interface BloodDemonProps {
   initialPosition: Vector3;
   onPositionUpdate: (id: number, position: Vector3) => void;
   id: number;
+  playerPosition: Vector3;
 }
 
 const MOVE_SPEED = 1.5;
+const CHASE_SPEED = 2.8;
+const CHASE_DISTANCE = 15;
 const DIRECTION_CHANGE_INTERVAL = 6000;
 const MAP_BOUNDARY = 70;
 
-export default function BloodDemon({ initialPosition, onPositionUpdate, id }: BloodDemonProps) {
+export default function BloodDemon({ initialPosition, onPositionUpdate, id, playerPosition }: BloodDemonProps) {
   const groupRef = useRef<Group>(null);
   const { scene, animations } = useGLTF("/model/blooddemon.glb");
   const clonedScene = useMemo(() => SkeletonUtils.clone(scene) as Group, [scene]);
@@ -69,17 +72,28 @@ export default function BloodDemon({ initialPosition, onPositionUpdate, id }: Bl
     if (!groupRef.current) return;
 
     const now = Date.now();
+    const distToPlayer = currentPosition.current.distanceTo(playerPosition);
+    const chasing = distToPlayer <= CHASE_DISTANCE;
 
-    if (now - lastDirectionChange.current > DIRECTION_CHANGE_INTERVAL) {
-      moveDirection.current = new Vector3(
-        Math.random() - 0.5,
-        0,
-        Math.random() - 0.5
-      ).normalize();
-      lastDirectionChange.current = now;
+    if (chasing) {
+      // Chase mode: lerp direction toward player
+      const toPlayer = playerPosition.clone().sub(currentPosition.current).setY(0).normalize();
+      moveDirection.current.lerp(toPlayer, 0.05);
+      moveDirection.current.normalize();
+    } else {
+      // Wander mode: random direction changes
+      if (now - lastDirectionChange.current > DIRECTION_CHANGE_INTERVAL) {
+        moveDirection.current = new Vector3(
+          Math.random() - 0.5,
+          0,
+          Math.random() - 0.5
+        ).normalize();
+        lastDirectionChange.current = now;
+      }
     }
 
-    const movement = moveDirection.current.clone().multiplyScalar(MOVE_SPEED * delta);
+    const speed = chasing ? CHASE_SPEED : MOVE_SPEED;
+    const movement = moveDirection.current.clone().multiplyScalar(speed * delta);
     currentPosition.current.add(movement);
 
     const distFromOrigin = currentPosition.current.length();
@@ -100,7 +114,7 @@ export default function BloodDemon({ initialPosition, onPositionUpdate, id }: Bl
 
   return (
     <group ref={groupRef} position={[initialPosition.x, initialPosition.y, initialPosition.z]}>
-      <primitive object={clonedScene} scale={1} />
+      <primitive object={clonedScene} scale={1.3} />
     </group>
   );
 }

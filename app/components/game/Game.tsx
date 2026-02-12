@@ -24,9 +24,10 @@ interface GameProps {
   onLoadingProgress?: (progress: number) => void;
 }
 
-const DEMON_COUNT = 10;
+const DEMON_COUNT = 20;
 const DEMON_KILL_DISTANCE = 2;
 const DEMON_DARK_DISTANCE = 15;
+const SISTER_CLEAR_DISTANCE = 1.2;
 
 // Track loading progress and report to parent
 function LoadingTracker({ onProgress }: { onProgress: (progress: number) => void }) {
@@ -41,7 +42,8 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
   const [playerPosition, setPlayerPosition] = useState<Vector3>(
     () => new Vector3(0, 0, 0)
   );
-  const [playerRotation, setPlayerRotation] = useState(0);
+  const [cameraRotation, setCameraRotation] = useState(0);
+  const [playerFacing, setPlayerFacing] = useState(0);
   const [isMoving, setIsMoving] = useState(false);
   const [distanceToSister, setDistanceToSister] = useState(50);
   const [closestDemonDistance, setClosestDemonDistance] = useState(100);
@@ -95,9 +97,10 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
   }, [gameState]);
 
   const handlePositionUpdate = useCallback(
-    (position: Vector3, rotation: number, moving: boolean) => {
+    (position: Vector3, camRotation: number, facing: number, moving: boolean) => {
       setPlayerPosition(position);
-      setPlayerRotation(rotation);
+      setCameraRotation(camRotation);
+      setPlayerFacing(facing);
       setIsMoving(moving);
 
       if (gameState !== "playing" || gameEndedRef.current) return;
@@ -107,7 +110,7 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
       setDistanceToSister(sisterDist);
 
       // Check clear condition
-      if (sisterDist <= 3 && startTimeRef.current) {
+      if (sisterDist <= SISTER_CLEAR_DISTANCE && startTimeRef.current) {
         gameEndedRef.current = true;
         const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
         onClear(elapsedTime);
@@ -152,13 +155,13 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
         camera={{ fov: 60, near: 0.1, far: 1000 }}
         style={{ width: "100vw", height: "100vh" }}
       >
-        <color attach="background" args={["#e8e8e8"]} />
-        <fog attach="fog" args={["#e8e8e8", 2, 15]} />
+        <color attach="background" args={["#243447"]} />
+        <fog attach="fog" args={["#243447", 3, 28]} />
 
-        <ambientLight intensity={0.6} />
+        <ambientLight intensity={0.35} />
         <directionalLight
           position={[10, 20, 10]}
-          intensity={0.8}
+          intensity={0.5}
           castShadow
           shadow-mapSize={[2048, 2048]}
         />
@@ -171,7 +174,7 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
           />
           <ThirdPersonCamera
             playerPosition={playerPosition}
-            playerRotation={playerRotation}
+            cameraRotation={cameraRotation}
           />
           <Sister
             position={sisterInitialPosition}
@@ -184,6 +187,7 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
               id={i}
               initialPosition={pos}
               onPositionUpdate={handleDemonPositionUpdate}
+              playerPosition={playerPosition}
             />
           ))}
           <Ground />
@@ -201,7 +205,8 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
       {isActive && (
         <Minimap
           playerPosition={playerPosition}
-          playerRotation={playerRotation}
+          playerRotation={cameraRotation}
+          playerFacing={playerFacing}
           sisterPosition={sisterCurrentPosition}
           demonPositions={demonPositions}
         />

@@ -24,16 +24,33 @@ const footprintVertexShader = `
 
 const footprintFragmentShader = `
   uniform float uOpacity;
+  uniform float uIsLeft;
   varying vec2 vUv;
 
   void main() {
-    // Simple elliptical footprint shape
-    vec2 center = vUv - vec2(0.5);
-    float dist = length(center * vec2(1.0, 1.4));
-    float alpha = smoothstep(0.5, 0.3, dist) * uOpacity;
+    vec2 uv = vUv - vec2(0.5);
+    if (uIsLeft > 0.5) uv.x = -uv.x;
 
-    // Slightly darker than snow
-    vec3 color = vec3(0.75, 0.8, 0.88);
+    // Toe area (upper, wider)
+    vec2 toeCenter = uv - vec2(0.03, -0.12);
+    float toeDist = length(toeCenter * vec2(1.6, 2.2));
+    float toeShape = smoothstep(0.5, 0.32, toeDist);
+
+    // Heel area (lower, narrower)
+    vec2 heelCenter = uv - vec2(-0.02, 0.15);
+    float heelDist = length(heelCenter * vec2(2.2, 2.8));
+    float heelShape = smoothstep(0.5, 0.32, heelDist);
+
+    // Arch indent (inner side)
+    vec2 archCenter = uv - vec2(0.06, 0.02);
+    float archDist = length(archCenter * vec2(3.5, 1.8));
+    float archIndent = smoothstep(0.2, 0.45, archDist);
+
+    float footShape = max(toeShape, heelShape);
+    float alpha = footShape * archIndent * uOpacity;
+
+    float depth = footShape * 0.08;
+    vec3 color = vec3(0.72 - depth, 0.77 - depth, 0.85 - depth);
     gl_FragColor = vec4(color, alpha);
   }
 `;
@@ -57,7 +74,7 @@ export default function Footprints({ playerPosition, isMoving }: FootprintsProps
     // Initialize object pool
     if (!poolInitialized.current) {
       poolInitialized.current = true;
-      const geometry = new THREE.PlaneGeometry(0.25, 0.35);
+      const geometry = new THREE.PlaneGeometry(0.3, 0.4);
       geometry.rotateX(-Math.PI / 2);
 
       for (let i = 0; i < MAX_FOOTPRINTS; i++) {
@@ -66,6 +83,7 @@ export default function Footprints({ playerPosition, isMoving }: FootprintsProps
           fragmentShader: footprintFragmentShader,
           uniforms: {
             uOpacity: { value: 0 },
+            uIsLeft: { value: 0 },
           },
           transparent: true,
           depthWrite: false,
@@ -94,10 +112,11 @@ export default function Footprints({ playerPosition, isMoving }: FootprintsProps
         }
 
         // Alternate left/right foot offset
+        const isLeft = stepSide.current;
         const direction = playerPosition.clone().sub(lastPositionRef.current).normalize();
         const perpendicular = new THREE.Vector3(-direction.z, 0, direction.x);
-        const offset = perpendicular.multiplyScalar(stepSide.current === 0 ? 0.12 : -0.12);
-        stepSide.current = stepSide.current === 0 ? 1 : 0;
+        const offset = perpendicular.multiplyScalar(isLeft === 0 ? 0.12 : -0.12);
+        stepSide.current = isLeft === 0 ? 1 : 0;
 
         fp.mesh.position.set(
           playerPosition.x + offset.x,
@@ -108,7 +127,9 @@ export default function Footprints({ playerPosition, isMoving }: FootprintsProps
         fp.mesh.visible = true;
         fp.createdAt = now;
         fp.active = true;
-        (fp.mesh.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.7;
+        const mat = fp.mesh.material as THREE.ShaderMaterial;
+        mat.uniforms.uOpacity.value = 0.7;
+        mat.uniforms.uIsLeft.value = isLeft;
 
         lastPositionRef.current.copy(playerPosition);
       }
