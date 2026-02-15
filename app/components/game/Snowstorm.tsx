@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Points, PointMaterial } from "@react-three/drei";
 import * as THREE from "three";
 
 interface SnowstormProps {
@@ -64,14 +63,15 @@ function BlizzardLayer({
   });
 
   return (
-    <Points ref={pointsRef} limit={count}>
+    <points ref={pointsRef}>
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
           args={[particles.positions, 3]}
+          count={count}
         />
       </bufferGeometry>
-      <PointMaterial
+      <pointsMaterial
         transparent
         color="#ffffff"
         size={0.15}
@@ -79,7 +79,7 @@ function BlizzardLayer({
         depthWrite={false}
         opacity={0.85}
       />
-    </Points>
+    </points>
   );
 }
 
@@ -144,28 +144,16 @@ function GentleSnowLayer({
     pointsRef.current.geometry.attributes.position.needsUpdate = true;
   });
 
-  // Varying particle sizes via custom sizes attribute
-  const [sizes] = useState(() => {
-    const s = new Float32Array(count);
-    for (let i = 0; i < count; i++) {
-      s[i] = 0.05 + Math.random() * 0.1;
-    }
-    return s;
-  });
-
   return (
-    <Points ref={pointsRef} limit={count}>
+    <points ref={pointsRef}>
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
           args={[particles.positions, 3]}
-        />
-        <bufferAttribute
-          attach="attributes-size"
-          args={[sizes, 1]}
+          count={count}
         />
       </bufferGeometry>
-      <PointMaterial
+      <pointsMaterial
         transparent
         color="#e8f0ff"
         size={0.08}
@@ -173,7 +161,7 @@ function GentleSnowLayer({
         depthWrite={false}
         opacity={0.6}
       />
-    </Points>
+    </points>
   );
 }
 
@@ -231,14 +219,15 @@ function NearCameraSnowLayer({
   });
 
   return (
-    <Points ref={pointsRef} limit={count}>
+    <points ref={pointsRef}>
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
           args={[particles.positions, 3]}
+          count={count}
         />
       </bufferGeometry>
-      <PointMaterial
+      <pointsMaterial
         transparent
         color="#ffffff"
         size={0.3}
@@ -246,7 +235,7 @@ function NearCameraSnowLayer({
         depthWrite={false}
         opacity={0.5}
       />
-    </Points>
+    </points>
   );
 }
 

@@ -14,6 +14,7 @@ import BloodDemon from "./BloodDemon";
 import Footprints from "./Footprints";
 import GameHUD from "../ui/GameHUD";
 import Minimap from "../ui/Minimap";
+import GaugeMinigame from "../ui/GaugeMinigame";
 
 export type GameState = "start" | "loading" | "playing" | "clear" | "gameover";
 
@@ -25,7 +26,7 @@ interface GameProps {
 }
 
 const DEMON_COUNT = 20;
-const DEMON_KILL_DISTANCE = 2;
+const DEMON_KILL_DISTANCE = 1.5;
 const DEMON_DARK_DISTANCE = 15;
 const SISTER_CLEAR_DISTANCE = 1.2;
 
@@ -49,6 +50,9 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
   const [closestDemonDistance, setClosestDemonDistance] = useState(100);
   const startTimeRef = useRef<number | null>(null);
   const gameEndedRef = useRef(false);
+  const [miniGameActive, setMiniGameActive] = useState(false);
+  const [killedDemons, setKilledDemons] = useState<Set<number>>(() => new Set());
+  const miniGameDemonId = useRef<number | null>(null);
 
   // Sister initial position - random spawn 30-50m away
   const [sisterInitialPosition] = useState<Vector3>(() => {
@@ -117,22 +121,26 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
         return;
       }
 
-      // Demon distances
+      // Demon distances (skip killed demons)
       let minDemonDist = Infinity;
-      for (const demonPos of demonPositions) {
-        const dist = position.distanceTo(demonPos);
-        if (dist < minDemonDist) minDemonDist = dist;
+      let closestDemonId = -1;
+      for (let i = 0; i < demonPositions.length; i++) {
+        if (killedDemons.has(i)) continue;
+        const dist = position.distanceTo(demonPositions[i]);
+        if (dist < minDemonDist) {
+          minDemonDist = dist;
+          closestDemonId = i;
+        }
       }
       setClosestDemonDistance(minDemonDist);
 
-      // Check demon kill condition
-      if (minDemonDist <= DEMON_KILL_DISTANCE && startTimeRef.current) {
-        gameEndedRef.current = true;
-        const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
-        onGameOver(elapsedTime);
+      // Check demon collision → trigger minigame
+      if (minDemonDist <= DEMON_KILL_DISTANCE && !miniGameActive && closestDemonId >= 0) {
+        miniGameDemonId.current = closestDemonId;
+        setMiniGameActive(true);
       }
     },
-    [sisterCurrentPosition, demonPositions, gameState, onClear, onGameOver]
+    [sisterCurrentPosition, demonPositions, gameState, onClear, onGameOver, killedDemons, miniGameActive]
   );
 
   const handleLoadingProgress = useCallback(
@@ -141,6 +149,25 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
     },
     [onLoadingProgress]
   );
+
+  const handleMiniGameSuccess = useCallback(() => {
+    const demonId = miniGameDemonId.current;
+    if (demonId !== null) {
+      setKilledDemons(prev => new Set(prev).add(demonId));
+    }
+    setMiniGameActive(false);
+    miniGameDemonId.current = null;
+  }, []);
+
+  const handleMiniGameFail = useCallback(() => {
+    setMiniGameActive(false);
+    miniGameDemonId.current = null;
+    if (startTimeRef.current) {
+      gameEndedRef.current = true;
+      const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
+      onGameOver(elapsedTime);
+    }
+  }, [onGameOver]);
 
   if (gameState === "start") {
     return null;
@@ -170,7 +197,7 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
         <Suspense fallback={null}>
           <Player
             onPositionUpdate={handlePositionUpdate}
-            isPlaying={isActive}
+            isPlaying={isActive && !miniGameActive}
           />
           <ThirdPersonCamera
             playerPosition={playerPosition}
@@ -182,13 +209,15 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
             onPositionUpdate={handleSisterPositionUpdate}
           />
           {demonInitialPositions.map((pos, i) => (
-            <BloodDemon
-              key={i}
-              id={i}
-              initialPosition={pos}
-              onPositionUpdate={handleDemonPositionUpdate}
-              playerPosition={playerPosition}
-            />
+            !killedDemons.has(i) && (
+              <BloodDemon
+                key={i}
+                id={i}
+                initialPosition={pos}
+                onPositionUpdate={handleDemonPositionUpdate}
+                playerPosition={playerPosition}
+              />
+            )
           ))}
           <Ground />
           <Snowstorm playerPosition={playerPosition} />
@@ -210,6 +239,9 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
           sisterPosition={sisterCurrentPosition}
           demonPositions={demonPositions}
         />
+      )}
+      {miniGameActive && (
+        <GaugeMinigame onSuccess={handleMiniGameSuccess} onFail={handleMiniGameFail} />
       )}
     </>
   );

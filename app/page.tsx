@@ -6,7 +6,7 @@ import StartScreen from "./components/ui/StartScreen";
 import ClearScreen from "./components/ui/ClearScreen";
 import RankingScreen from "./components/ui/RankingScreen";
 import GameOverScreen from "./components/ui/GameOverScreen";
-import TransitionEffect from "./components/ui/TransitionEffect";
+import EndingScene from "./components/ui/EndingScene";
 import useBGM from "./hooks/useBGM";
 import useRanking from "./hooks/useRanking";
 import type { GameState } from "./components/game/Game";
@@ -127,12 +127,14 @@ export default function Home() {
   return (
     <main className="relative h-screen w-screen overflow-hidden">
       {gameState !== "start" && (
-        <Game
-          gameState={gameState}
-          onClear={handleClear}
-          onGameOver={handleGameOver}
-          onLoadingProgress={handleLoadingProgress}
-        />
+        <div style={{ display: isTransitioning ? 'none' : undefined }}>
+          <Game
+            gameState={gameState}
+            onClear={handleClear}
+            onGameOver={handleGameOver}
+            onLoadingProgress={handleLoadingProgress}
+          />
+        </div>
       )}
 
       {gameState === "start" && <StartScreen onStart={handleStart} />}
@@ -145,9 +147,9 @@ export default function Home() {
         />
       )}
 
-      {/* Transition effects */}
+      {/* Ending scene */}
       {isTransitioning && transitionType && (
-        <TransitionEffect
+        <EndingScene
           type={transitionType}
           onComplete={handleTransitionComplete}
         />

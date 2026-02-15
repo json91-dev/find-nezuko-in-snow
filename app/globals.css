@@ -259,6 +259,17 @@
   animation: screen-shake 0.5s ease-in-out;
 }
 
+@keyframes slash {
+  0% { stroke-dashoffset: 120; opacity: 0; }
+  30% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+.animate-slash {
+  stroke-dasharray: 120;
+  animation: slash 0.3s ease-out forwards;
+}
+
 /* Prevent touch scrolling/zooming during gameplay */
 body.gaming {
   touch-action: none;

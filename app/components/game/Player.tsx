@@ -171,8 +171,12 @@ export default function Player({ onPositionUpdate, isPlaying }: PlayerProps) {
   useFrame((_, delta) => {
     if (!groupRef.current || !isPlaying) return;
 
-    // Apply mouse drag to camera rotation only
-    cameraRotation.current -= mouseMovement.current.x * 0.0045;
+    // Apply mouse/touch drag to both camera and player rotation
+    const rotDelta = mouseMovement.current.x * 0.0045;
+    cameraRotation.current -= rotDelta;
+    if (isMouseDown.current) {
+      playerFacing.current -= rotDelta;
+    }
     mouseMovement.current.x = 0;
 
     // Calculate movement direction (relative to camera)
@@ -206,9 +210,6 @@ export default function Player({ onPositionUpdate, isPlaying }: PlayerProps) {
         -Math.cos(playerFacing.current)
       );
       position.current.add(moveDir.multiplyScalar(MOVE_SPEED * delta));
-
-      // While mouse-dragging and moving, align playerFacing toward camera forward
-      playerFacing.current = lerpAngle(playerFacing.current, cameraRotation.current, 0.08);
     }
 
     const moving = keyMoving || mouseMoving;
