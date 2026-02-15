@@ -22,6 +22,7 @@ const Game = dynamic(() => import("./components/game/Game"), {
 
 export default function Home() {
   const [gameState, setGameState] = useState<GameState>("start");
+  const [gameKey, setGameKey] = useState(0);
   const [clearTime, setClearTime] = useState<number>(0);
   const [showRanking, setShowRanking] = useState(false);
   const [isRecordSaved, setIsRecordSaved] = useState(false);
@@ -97,6 +98,7 @@ export default function Home() {
   }, [transitionType, pendingTime]);
 
   const handleRestart = useCallback(() => {
+    setGameKey(prev => prev + 1);
     setGameState("start");
     setClearTime(0);
     setIsRecordSaved(false);
@@ -127,7 +129,7 @@ export default function Home() {
   return (
     <main className="relative h-screen w-screen overflow-hidden">
       {gameState !== "start" && (
-        <div style={{ display: isTransitioning ? 'none' : undefined }}>
+        <div key={gameKey} style={{ display: isTransitioning ? 'none' : undefined }}>
           <Game
             gameState={gameState}
             onClear={handleClear}

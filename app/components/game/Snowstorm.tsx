@@ -1,8 +1,23 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+
+function createCircleTexture(): THREE.Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d")!;
+  const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gradient.addColorStop(0, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.4, "rgba(255,255,255,0.8)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 64, 64);
+  const texture = new THREE.CanvasTexture(canvas);
+  return texture;
+}
 
 interface SnowstormProps {
   count?: number;
@@ -13,9 +28,11 @@ interface SnowstormProps {
 function BlizzardLayer({
   count,
   playerPosition,
+  circleTexture,
 }: {
   count: number;
   playerPosition: THREE.Vector3;
+  circleTexture: THREE.Texture;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
 
@@ -29,9 +46,9 @@ function BlizzardLayer({
       positions[i3 + 1] = Math.random() * 30;
       positions[i3 + 2] = (Math.random() - 0.5) * 50;
 
-      velocities[i3] = (Math.random() - 0.5) * 2;
-      velocities[i3 + 1] = -3 - Math.random() * 2;
-      velocities[i3 + 2] = (Math.random() - 0.5) * 2;
+      velocities[i3] = (Math.random() - 0.5) * 1;
+      velocities[i3 + 1] = -1 - Math.random() * 1.5;
+      velocities[i3 + 2] = (Math.random() - 0.5) * 1;
     }
 
     return { positions, velocities };
@@ -78,6 +95,7 @@ function BlizzardLayer({
         sizeAttenuation
         depthWrite={false}
         opacity={0.85}
+        map={circleTexture}
       />
     </points>
   );
@@ -87,9 +105,11 @@ function BlizzardLayer({
 function GentleSnowLayer({
   count,
   playerPosition,
+  circleTexture,
 }: {
   count: number;
   playerPosition: THREE.Vector3;
+  circleTexture: THREE.Texture;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
 
@@ -160,6 +180,7 @@ function GentleSnowLayer({
         sizeAttenuation
         depthWrite={false}
         opacity={0.6}
+        map={circleTexture}
       />
     </points>
   );
@@ -169,9 +190,11 @@ function GentleSnowLayer({
 function NearCameraSnowLayer({
   count,
   playerPosition,
+  circleTexture,
 }: {
   count: number;
   playerPosition: THREE.Vector3;
+  circleTexture: THREE.Texture;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
 
@@ -185,9 +208,9 @@ function NearCameraSnowLayer({
       positions[i3 + 1] = Math.random() * 10;
       positions[i3 + 2] = (Math.random() - 0.5) * 10;
 
-      velocities[i3] = (Math.random() - 0.5) * 4; // strong horizontal wind
-      velocities[i3 + 1] = -4 - Math.random() * 3; // fast fall (-4 to -7)
-      velocities[i3 + 2] = (Math.random() - 0.5) * 4;
+      velocities[i3] = (Math.random() - 0.5) * 2; // horizontal wind
+      velocities[i3 + 1] = -1.5 - Math.random() * 1.5; // slower fall (-1.5 to -3)
+      velocities[i3 + 2] = (Math.random() - 0.5) * 2;
     }
 
     return { positions, velocities };
@@ -234,6 +257,7 @@ function NearCameraSnowLayer({
         sizeAttenuation
         depthWrite={false}
         opacity={0.5}
+        map={circleTexture}
       />
     </points>
   );
@@ -243,11 +267,13 @@ export default function Snowstorm({
   count = 8000,
   playerPosition,
 }: SnowstormProps) {
+  const circleTexture = useMemo(() => createCircleTexture(), []);
+
   return (
     <>
-      <BlizzardLayer count={count} playerPosition={playerPosition} />
-      <GentleSnowLayer count={Math.floor(count * 0.4)} playerPosition={playerPosition} />
-      <NearCameraSnowLayer count={400} playerPosition={playerPosition} />
+      <BlizzardLayer count={count} playerPosition={playerPosition} circleTexture={circleTexture} />
+      <GentleSnowLayer count={Math.floor(count * 0.4)} playerPosition={playerPosition} circleTexture={circleTexture} />
+      <NearCameraSnowLayer count={400} playerPosition={playerPosition} circleTexture={circleTexture} />
     </>
   );
 }

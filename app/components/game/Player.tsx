@@ -28,6 +28,7 @@ export default function Player({ onPositionUpdate, isPlaying }: PlayerProps) {
   const keysPressed = useRef<Set<string>>(new Set());
   const mouseMovement = useRef({ x: 0 });
   const isMouseDown = useRef(false);
+  const isTouchInput = useRef(false);
   const cameraRotation = useRef(0);
   const playerFacing = useRef(0);
   const position = useRef(new Vector3(0, 0, 0));
@@ -68,6 +69,7 @@ export default function Player({ onPositionUpdate, isPlaying }: PlayerProps) {
     const handleMouseDown = (e: MouseEvent) => {
       if (e.button === 0) {
         isMouseDown.current = true;
+        isTouchInput.current = false;
         // Snap playerFacing toward click point (relative to camera)
         const screenCenterX = window.innerWidth / 2;
         const offsetX = e.clientX - screenCenterX;
@@ -114,13 +116,9 @@ export default function Player({ onPositionUpdate, isPlaying }: PlayerProps) {
     const handleTouchStart = (e: TouchEvent) => {
       e.preventDefault();
       isMouseDown.current = true;
+      isTouchInput.current = true;
       lastTouchX = e.touches[0].clientX;
-      // Snap playerFacing toward touch point (relative to camera)
-      const screenCenterX = window.innerWidth / 2;
-      const offsetX = e.touches[0].clientX - screenCenterX;
-      const normalizedOffset = offsetX / screenCenterX;
-      const snapAngle = normalizedOffset * (Math.PI / 3);
-      playerFacing.current = cameraRotation.current - snapAngle;
+      // 스냅 제거: 터치 시작 시 방향 변경 없음, 스와이프로만 방향 전환
     };
     const handleTouchMove = (e: TouchEvent) => {
       e.preventDefault();
@@ -171,11 +169,18 @@ export default function Player({ onPositionUpdate, isPlaying }: PlayerProps) {
   useFrame((_, delta) => {
     if (!groupRef.current || !isPlaying) return;
 
-    // Apply mouse/touch drag to both camera and player rotation
-    const rotDelta = mouseMovement.current.x * 0.0045;
-    cameraRotation.current -= rotDelta;
-    if (isMouseDown.current) {
-      playerFacing.current -= rotDelta;
+    // Apply mouse/touch drag rotation
+    // const rotDelta = mouseMovement.current.x * 0.0045;
+    const rotDelta = mouseMovement.current.x * 0.01;
+    if (isTouchInput.current) {
+      // 터치: 캐릭터만 회전 (감도 2배), 카메라 고정
+      playerFacing.current -= rotDelta * 3;
+    } else {
+      // 마우스: 카메라 + 캐릭터 동시 회전 (기존 동작)
+      cameraRotation.current -= rotDelta;
+      if (isMouseDown.current) {
+        playerFacing.current -= rotDelta;
+      }
     }
     mouseMovement.current.x = 0;
 
