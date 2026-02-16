@@ -14,7 +14,8 @@
       "Bash(npm run lint:*)",
       "Bash(git reset:*)",
       "Bash(git commit:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

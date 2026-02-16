@@ -45,7 +45,16 @@ function WalkingCharacter({
 }) {
   const groupRef = useRef<Group>(null);
   const { scene, animations } = useGLTF(modelPath);
-  const clonedScene = useMemo(() => SkeletonUtils.clone(scene) as Group, [scene]);
+  const clonedScene = useMemo(() => {
+    const clone = SkeletonUtils.clone(scene) as Group;
+    // Deep-clone materials so fade-out doesn't mutate the cached original
+    clone.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.material) {
+        child.material = child.material.clone();
+      }
+    });
+    return clone;
+  }, [scene]);
   const { actions, names } = useAnimations(animations, groupRef);
 
   // Play walk animation
