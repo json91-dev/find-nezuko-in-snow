@@ -245,17 +245,17 @@ function EndingSceneContent({ type, onComplete }: EndingSceneProps) {
     <>
       <SceneCamera />
 
-      {/* Lighting */}
-      <ambientLight intensity={isClear ? 0.8 : 0.2} />
+      {/* Lighting — gameover was too dark (0.2/0.3 vs game 0.35/0.5); boost so characters read clearly */}
+      <ambientLight intensity={isClear ? 0.8 : 0.5} />
       <directionalLight
         position={[5, 10, 5]}
-        intensity={isClear ? 0.6 : 0.3}
-        color={isClear ? "#FFF5E6" : "#8899BB"}
+        intensity={isClear ? 0.6 : 0.7}
+        color={isClear ? "#FFF5E6" : "#AABBCC"}
       />
 
-      {/* Ground plane — gameover uses same color as game Ground (#95a5b5) */}
+      {/* Ground plane — large + fog so edges fade softly (like in-game) */}
       <mesh rotation-x={-Math.PI / 2} position-y={0}>
-        <planeGeometry args={[20, 20]} />
+        <planeGeometry args={[80, 80]} />
         <meshStandardMaterial color={isClear ? "#FFE0E6" : "#95a5b5"} roughness={0.85} />
       </mesh>
 
@@ -307,6 +307,10 @@ export default function EndingScene({ type, onComplete }: EndingSceneProps) {
           style={{ width: "100%", height: "100%" }}
         >
           <color attach="background" args={[isClear ? "#FFE8EC" : "#243447"]} />
+          <fog
+            attach="fog"
+            args={[isClear ? "#FFE8EC" : "#243447", 2, 32]}
+          />
           <EndingSceneContent type={type} onComplete={onComplete} />
         </Canvas>
       )}
