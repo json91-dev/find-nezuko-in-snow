@@ -17,8 +17,13 @@ export default function ColorHint({
 }: ColorHintProps) {
   const style = useMemo(() => {
     // Sister: like demon — only when close. "Light" bright yellow, no tint when far.
-    const sisterEffectDistance = 18; // effect starts inside this range
-    if (distance >= sisterEffectDistance) {
+    const sisterEffectDistance = 12; // effect starts inside this range
+    const demonInterferenceDistance = 8; // demon suppresses sister effect when this close
+
+    // Check if demon is interfering (too close to sister)
+    const isDemonInterfering = demonDistance < demonInterferenceDistance;
+
+    if (distance >= sisterEffectDistance || isDemonInterfering) {
       return {
         position: "fixed" as const,
         top: 0,
@@ -34,11 +39,11 @@ export default function ColorHint({
     const t = 1 - distance / sisterEffectDistance; // 0 far, 1 at sister
     const strength = Math.pow(t, 0.65); // closer = brighter, hopeful ramp
 
-    // Warm golden-white + 클리어 느낌의 은은한 핑크 (가까울수록 더 밝고 희망찬 빛)
+    // Enhanced white light effect - brighter and more prominent
     const r = 255;
-    const g = Math.round(252 - strength * 14); // 가까울수록 살짝 핑크 (255→238)
-    const b = Math.round(230 + strength * 15); // 가까울수록 밝은 핑크빛 (230→245)
-    const opacity = strength * 0.4; // 가까울수록 더 환하게
+    const g = Math.round(255 - strength * 20); // slightly less green as you get closer (255→235)
+    const b = Math.round(240 + strength * 15); // keep blue bright (240→255)
+    const opacity = strength * 0.65; // increased opacity for more emphasized effect (was 0.4)
 
     return {
       position: "fixed" as const,
@@ -51,10 +56,12 @@ export default function ColorHint({
       zIndex: 10,
       transition: "background-color 0.5s ease-out",
     };
-  }, [distance, maxDistance]);
+  }, [distance, maxDistance, demonDistance]);
 
   const demonStyle = useMemo(() => {
-    if (demonDistance >= demonMaxDistance) return null;
+    // Suppress demon effect when in sister's area (< 12 units)
+    const sisterEffectDistance = 12;
+    if (demonDistance >= demonMaxDistance || distance < sisterEffectDistance) return null;
 
     // Far: blood tint. Near: stronger vignette/darkness.
     const t = 1 - Math.min(demonDistance / demonMaxDistance, 1);
@@ -78,7 +85,7 @@ export default function ColorHint({
       zIndex: 11,
       transition: "all 0.5s ease-out",
     };
-  }, [demonDistance, demonMaxDistance]);
+  }, [demonDistance, demonMaxDistance, distance]);
 
   return (
     <>

@@ -70,7 +70,11 @@ export default function StartScreen({ onStart, isLoading, loadingProgress = 0 }:
           <p className="mb-8 text-center text-sm leading-relaxed text-blue-200/70">
             눈보라 속에서 길을 잃은 네즈코을 찾아주세요.
             <br />
-            울음소리와 색감만이 유일한 단서입니다.
+            울음소리, 화면의 색감, 미니맵의 노란 원이 단서입니다.
+            <br />
+            <span className="text-xs text-blue-300/60">
+              가끔 나타나는 노란 원이 여동생의 위치를 알려줍니다.
+            </span>
             <br />
             중간에 혈귀를 만나면 게임이 종료되니 잘 피해주세요.
           </p>
