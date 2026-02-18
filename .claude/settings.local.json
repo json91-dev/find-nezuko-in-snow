@@ -16,7 +16,8 @@
       "Bash(git commit:*)",
       "Bash(git log:*)",
       "Bash(npx tsc:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(agent-browser open:*)"
     ]
   }
 }

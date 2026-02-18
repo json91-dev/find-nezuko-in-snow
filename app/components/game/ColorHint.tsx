@@ -18,12 +18,8 @@ export default function ColorHint({
   const style = useMemo(() => {
     // Sister: like demon — only when close. "Light" bright yellow, no tint when far.
     const sisterEffectDistance = 12; // effect starts inside this range
-    const demonInterferenceDistance = 8; // demon suppresses sister effect when this close
 
-    // Check if demon is interfering (too close to sister)
-    const isDemonInterfering = demonDistance < demonInterferenceDistance;
-
-    if (distance >= sisterEffectDistance || isDemonInterfering) {
+    if (distance >= sisterEffectDistance) {
       return {
         position: "fixed" as const,
         top: 0,

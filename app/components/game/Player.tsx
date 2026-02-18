@@ -59,6 +59,7 @@ export default function Player({ onPositionUpdate, isPlaying }: PlayerProps) {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      keysPressed.current.clear(); // 미니게임 등으로 리스너 해제 시 눌린 키 초기화
     };
   }, [isPlaying]);
 
