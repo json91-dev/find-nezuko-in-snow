@@ -27,6 +27,7 @@ export default function Home() {
   const [showRanking, setShowRanking] = useState(false);
   const [isRecordSaved, setIsRecordSaved] = useState(false);
   const [currentRecordId, setCurrentRecordId] = useState<string | undefined>();
+  const [isMuted, setIsMuted] = useState(false);
 
   // Transition state
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -38,7 +39,7 @@ export default function Home() {
   useBGM({
     src: "/audio/bgm.MP3",
     volume: 0.3,
-    enabled: gameState === "playing",
+    enabled: gameState === "playing" && !isMuted,
   });
 
   // Toggle body class for touch-action prevention during gameplay
@@ -135,6 +136,8 @@ export default function Home() {
             onClear={handleClear}
             onGameOver={handleGameOver}
             onLoadingProgress={handleLoadingProgress}
+            muted={isMuted}
+            onToggleMute={() => setIsMuted(prev => !prev)}
           />
         </div>
       )}

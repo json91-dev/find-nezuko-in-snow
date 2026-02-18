@@ -12,13 +12,14 @@ interface SisterProps {
   playerPosition: Vector3;
   onPositionUpdate?: (position: Vector3) => void;
   visible?: boolean;
+  muted?: boolean;
 }
 
 const MOVE_SPEED = 2.5;
 const DIRECTION_CHANGE_INTERVAL = 4000;
 const MAP_BOUNDARY = 80;
 
-export default function Sister({ position, playerPosition, onPositionUpdate, visible = true }: SisterProps) {
+export default function Sister({ position, playerPosition, onPositionUpdate, visible = true, muted = false }: SisterProps) {
   const groupRef = useRef<Group>(null);
   const { scene, animations } = useGLTF("/model/sister.glb");
   const { actions, names } = useAnimations(animations, groupRef);
@@ -47,6 +48,7 @@ export default function Sister({ position, playerPosition, onPositionUpdate, vis
     maxDistance: 300,
     refDistance: 5,
     minVolume: 0.2,
+    muted,
   });
 
   useEffect(() => {

@@ -10,6 +10,7 @@ interface UsePositionalAudioProps {
   maxDistance?: number;
   refDistance?: number;
   minVolume?: number;
+  muted?: boolean;
 }
 
 export default function usePositionalAudio({
@@ -19,6 +20,7 @@ export default function usePositionalAudio({
   maxDistance = 50,
   refDistance = 5,
   minVolume = 0,
+  muted = false,
 }: UsePositionalAudioProps) {
   const audioContextRef = useRef<AudioContext | null>(null);
   const pannerRef = useRef<PannerNode | null>(null);
@@ -190,7 +192,7 @@ export default function usePositionalAudio({
         const t = Math.min(distance / md, 1);
         // Cubic falloff with minimum volume floor
         const volume = Math.max(minVolume, t >= 1 ? 0 : Math.pow(1 - t, 1.5));
-        gain.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
+        gain.gain.setTargetAtTime(muted ? 0 : volume, ctx.currentTime, 0.05);
       }
 
       animationId = requestAnimationFrame(updatePositions);
@@ -199,7 +201,7 @@ export default function usePositionalAudio({
     animationId = requestAnimationFrame(updatePositions);
 
     return () => cancelAnimationFrame(animationId);
-  }, []);
+  }, [muted]);
 
   return null;
 }
