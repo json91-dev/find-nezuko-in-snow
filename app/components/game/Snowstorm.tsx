@@ -1,279 +1,213 @@
 "use client";
 
-import { useRef, useState, useMemo } from "react";
+import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-
-function createCircleTexture(): THREE.Texture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 64;
-  canvas.height = 64;
-  const ctx = canvas.getContext("2d")!;
-  const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-  gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.4, "rgba(255,255,255,0.8)");
-  gradient.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 64, 64);
-  const texture = new THREE.CanvasTexture(canvas);
-  return texture;
-}
 
 interface SnowstormProps {
   count?: number;
   playerPosition: THREE.Vector3;
 }
 
-// Main blizzard layer
-function BlizzardLayer({
-  count,
-  playerPosition,
-  circleTexture,
-}: {
+// GPU-based vertex shader: computes particle positions on the GPU each frame.
+// No JS per-frame loops — only time + playerPosition uniforms are updated.
+const vertexShader = /* glsl */ `
+  uniform float time;
+  uniform vec3 playerPosition;
+  uniform float spread;
+  uniform float height;
+  uniform float size;
+  uniform float swayAmount;
+
+  attribute vec3 aSeed;      // random 0-1 seed per particle (x, y, z offset)
+  attribute vec3 aVelocity;  // velocity: x/z wind, y fall speed (positive = downward)
+  attribute float aPhase;    // random phase for sine sway
+
+  void main() {
+    float swayX = sin(time * 0.5 + aPhase) * swayAmount;
+
+    // World-space drift — independent of playerPosition so particles don't "follow" the player.
+    // 500.0 gives a large initial spread; the wrapping below brings them near the player.
+    float worldX = aSeed.x * 500.0 + aVelocity.x * time + swayX;
+    float worldZ = aSeed.z * 500.0 + aVelocity.z * time;
+    float y      = mod(aSeed.y * height - aVelocity.y * time, height);
+
+    // Wrap to the nearest alias within spread/2 of the player (invisible teleport at boundary).
+    // Particle stays at its world position until it drifts > spread/2 away, then jumps to the
+    // opposite side — exactly like the original JS respawn, but on the GPU.
+    float posX = worldX - floor((worldX - playerPosition.x) / spread + 0.5) * spread;
+    float posZ = worldZ - floor((worldZ - playerPosition.z) / spread + 0.5) * spread;
+
+    vec4 mvPosition = modelViewMatrix * vec4(posX, y, posZ, 1.0);
+    gl_PointSize = clamp(size * projectionMatrix[1][1] * 100.0 / -mvPosition.z, 1.0, 64.0);
+    gl_Position  = projectionMatrix * mvPosition;
+  }
+`;
+
+// Soft hazy sprite — mimics the original canvas radial gradient falloff
+const fragmentShader = /* glsl */ `
+  uniform float opacity;
+  uniform vec3 color;
+
+  void main() {
+    float d = length(gl_PointCoord - vec2(0.5)) * 2.0; // 0 = center, 1 = edge
+    if (d > 1.0) discard;
+    // pow(1-d, 1.5): gentle curve — bright center, fades smoothly to transparent edge.
+    // Matches the feel of the original canvas radial gradient (full → 0.8 → 0 across radius).
+    float alpha = pow(1.0 - d, 1.5) * opacity;
+    gl_FragColor = vec4(color, alpha);
+  }
+`;
+
+interface LayerConfig {
   count: number;
-  playerPosition: THREE.Vector3;
-  circleTexture: THREE.Texture;
-}) {
-  const pointsRef = useRef<THREE.Points>(null);
-
-  const [particles] = useState(() => {
-    const positions = new Float32Array(count * 3);
-    const velocities = new Float32Array(count * 3);
-
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3;
-      positions[i3] = (Math.random() - 0.5) * 50;
-      positions[i3 + 1] = Math.random() * 30;
-      positions[i3 + 2] = (Math.random() - 0.5) * 50;
-
-      velocities[i3] = (Math.random() - 0.5) * 1;
-      velocities[i3 + 1] = -1 - Math.random() * 1.5;
-      velocities[i3 + 2] = (Math.random() - 0.5) * 1;
-    }
-
-    return { positions, velocities };
-  });
-
-  useFrame((_, delta) => {
-    if (!pointsRef.current) return;
-
-    const positions = pointsRef.current.geometry.attributes.position.array as Float32Array;
-
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3;
-      positions[i3] += particles.velocities[i3] * delta;
-      positions[i3 + 1] += particles.velocities[i3 + 1] * delta;
-      positions[i3 + 2] += particles.velocities[i3 + 2] * delta;
-
-      const distX = positions[i3] - playerPosition.x;
-      const distZ = positions[i3 + 2] - playerPosition.z;
-      const horizontalDist = Math.sqrt(distX * distX + distZ * distZ);
-
-      if (positions[i3 + 1] < 0 || horizontalDist > 30) {
-        positions[i3] = playerPosition.x + (Math.random() - 0.5) * 50;
-        positions[i3 + 1] = 20 + Math.random() * 10;
-        positions[i3 + 2] = playerPosition.z + (Math.random() - 0.5) * 50;
-      }
-    }
-
-    pointsRef.current.geometry.attributes.position.needsUpdate = true;
-  });
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[particles.positions, 3]}
-          count={count}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        transparent
-        color="#ffffff"
-        size={0.15}
-        sizeAttenuation
-        depthWrite={false}
-        opacity={0.85}
-        map={circleTexture}
-      />
-    </points>
-  );
+  spread: number;
+  height: number;
+  size: number;
+  opacity: number;
+  color: string;
+  fallSpeed: [number, number];
+  windSpeed: number;
+  swayAmount?: number;
 }
 
-// Slow gentle snow layer
-function GentleSnowLayer({
-  count,
-  playerPosition,
-  circleTexture,
+function ShaderSnowLayer({
+  config,
+  playerPositionRef,
 }: {
-  count: number;
-  playerPosition: THREE.Vector3;
-  circleTexture: THREE.Texture;
+  config: LayerConfig;
+  playerPositionRef: React.RefObject<THREE.Vector3>;
 }) {
+  const {
+    count,
+    spread,
+    height,
+    size,
+    opacity,
+    color,
+    fallSpeed,
+    windSpeed,
+    swayAmount = 0,
+  } = config;
+
   const pointsRef = useRef<THREE.Points>(null);
 
-  const [particles] = useState(() => {
-    const positions = new Float32Array(count * 3);
+  const { geometry, material } = useMemo(() => {
+    const seeds      = new Float32Array(count * 3);
     const velocities = new Float32Array(count * 3);
-    const phases = new Float32Array(count); // for sine sway
+    const phases     = new Float32Array(count);
 
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
-      positions[i3] = (Math.random() - 0.5) * 60;
-      positions[i3 + 1] = Math.random() * 30;
-      positions[i3 + 2] = (Math.random() - 0.5) * 60;
+      seeds[i3]     = Math.random();
+      seeds[i3 + 1] = Math.random();
+      seeds[i3 + 2] = Math.random();
 
-      velocities[i3] = (Math.random() - 0.5) * 0.3;
-      velocities[i3 + 1] = -0.5 - Math.random() * 1.0; // slow fall
-      velocities[i3 + 2] = (Math.random() - 0.5) * 0.3;
+      velocities[i3]     = (Math.random() - 0.5) * windSpeed;
+      velocities[i3 + 1] = fallSpeed[0] + Math.random() * (fallSpeed[1] - fallSpeed[0]);
+      velocities[i3 + 2] = (Math.random() - 0.5) * windSpeed;
 
       phases[i] = Math.random() * Math.PI * 2;
     }
 
-    return { positions, velocities, phases };
-  });
+    const geo = new THREE.BufferGeometry();
+    // Dummy position buffer — real positions computed in vertex shader
+    geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+    geo.setAttribute("aSeed",     new THREE.BufferAttribute(seeds,      3));
+    geo.setAttribute("aVelocity", new THREE.BufferAttribute(velocities, 3));
+    geo.setAttribute("aPhase",    new THREE.BufferAttribute(phases,     1));
 
-  useFrame(({ clock }, delta) => {
+    const mat = new THREE.ShaderMaterial({
+      vertexShader,
+      fragmentShader,
+      uniforms: {
+        time:           { value: 0 },
+        playerPosition: { value: new THREE.Vector3() },
+        spread:         { value: spread },
+        height:         { value: height },
+        size:           { value: size },
+        opacity:        { value: opacity },
+        color:          { value: new THREE.Color(color) },
+        swayAmount:     { value: swayAmount },
+      },
+      transparent: true,
+      depthWrite:  false,
+    });
+
+    return { geometry: geo, material: mat };
+  }, [count, spread, height, size, opacity, color, fallSpeed, windSpeed, swayAmount]);
+
+  // Only uniform updates per frame — no JS particle loops
+  useFrame(({ clock }) => {
     if (!pointsRef.current) return;
-
-    const positions = pointsRef.current.geometry.attributes.position.array as Float32Array;
-    const time = clock.elapsedTime;
-
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3;
-
-      // Gentle sine wave sway
-      const sway = Math.sin(time * 0.5 + particles.phases[i]) * 0.3;
-
-      positions[i3] += (particles.velocities[i3] + sway * delta) * delta * 2;
-      positions[i3 + 1] += particles.velocities[i3 + 1] * delta;
-      positions[i3 + 2] += particles.velocities[i3 + 2] * delta;
-
-      const distX = positions[i3] - playerPosition.x;
-      const distZ = positions[i3 + 2] - playerPosition.z;
-      const horizontalDist = Math.sqrt(distX * distX + distZ * distZ);
-
-      if (positions[i3 + 1] < 0 || horizontalDist > 35) {
-        positions[i3] = playerPosition.x + (Math.random() - 0.5) * 60;
-        positions[i3 + 1] = 25 + Math.random() * 10;
-        positions[i3 + 2] = playerPosition.z + (Math.random() - 0.5) * 60;
-      }
-    }
-
-    pointsRef.current.geometry.attributes.position.needsUpdate = true;
+    const mat = pointsRef.current.material as THREE.ShaderMaterial;
+    mat.uniforms.time.value = clock.elapsedTime;
+    mat.uniforms.playerPosition.value.copy(playerPositionRef.current);
   });
 
   return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[particles.positions, 3]}
-          count={count}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        transparent
-        color="#e8f0ff"
-        size={0.08}
-        sizeAttenuation
-        depthWrite={false}
-        opacity={0.6}
-        map={circleTexture}
-      />
-    </points>
+    <points
+      ref={pointsRef}
+      geometry={geometry}
+      material={material}
+      frustumCulled={false}
+    />
   );
 }
 
-// Near-camera snow layer for "inside the blizzard" feel
-function NearCameraSnowLayer({
-  count,
-  playerPosition,
-  circleTexture,
-}: {
-  count: number;
-  playerPosition: THREE.Vector3;
-  circleTexture: THREE.Texture;
-}) {
-  const pointsRef = useRef<THREE.Points>(null);
+export default function Snowstorm({ count = 8000, playerPosition }: SnowstormProps) {
+  const playerPositionRef = useRef(playerPosition.clone());
 
-  const [particles] = useState(() => {
-    const positions = new Float32Array(count * 3);
-    const velocities = new Float32Array(count * 3);
-
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3;
-      positions[i3] = (Math.random() - 0.5) * 10;
-      positions[i3 + 1] = Math.random() * 10;
-      positions[i3 + 2] = (Math.random() - 0.5) * 10;
-
-      velocities[i3] = (Math.random() - 0.5) * 2; // horizontal wind
-      velocities[i3 + 1] = -1.5 - Math.random() * 1.5; // slower fall (-1.5 to -3)
-      velocities[i3 + 2] = (Math.random() - 0.5) * 2;
-    }
-
-    return { positions, velocities };
+  // Sync playerPosition prop → ref each frame (no re-render needed)
+  useFrame(() => {
+    playerPositionRef.current.copy(playerPosition);
   });
 
-  useFrame((_, delta) => {
-    if (!pointsRef.current) return;
-
-    const positions = pointsRef.current.geometry.attributes.position.array as Float32Array;
-
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3;
-      positions[i3] += particles.velocities[i3] * delta;
-      positions[i3 + 1] += particles.velocities[i3 + 1] * delta;
-      positions[i3 + 2] += particles.velocities[i3 + 2] * delta;
-
-      const distX = positions[i3] - playerPosition.x;
-      const distZ = positions[i3 + 2] - playerPosition.z;
-      const horizontalDist = Math.sqrt(distX * distX + distZ * distZ);
-
-      if (positions[i3 + 1] < 0 || horizontalDist > 5) {
-        positions[i3] = playerPosition.x + (Math.random() - 0.5) * 10;
-        positions[i3 + 1] = playerPosition.y + 5 + Math.random() * 5;
-        positions[i3 + 2] = playerPosition.z + (Math.random() - 0.5) * 10;
-      }
-    }
-
-    pointsRef.current.geometry.attributes.position.needsUpdate = true;
-  });
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[particles.positions, 3]}
-          count={count}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        transparent
-        color="#ffffff"
-        size={0.3}
-        sizeAttenuation
-        depthWrite={false}
-        opacity={0.5}
-        map={circleTexture}
-      />
-    </points>
+  const layers: LayerConfig[] = useMemo(
+    () => [
+      // Main blizzard layer
+      {
+        count,
+        spread:    50,
+        height:    30,
+        size:      0.15,
+        opacity:   0.85,
+        color:     "#ffffff",
+        fallSpeed: [1, 2.5],
+        windSpeed: 1,
+      },
+      // Gentle slow snow with sine sway
+      {
+        count:      Math.floor(count * 0.4),
+        spread:     60,
+        height:     30,
+        size:       0.08,
+        opacity:    0.6,
+        color:      "#e8f0ff",
+        fallSpeed:  [0.5, 1.5],
+        windSpeed:  0.3,
+        swayAmount: 1.5,
+      },
+      // Near-camera layer for "inside the blizzard" feel
+      {
+        count:     400,
+        spread:    10,
+        height:    10,
+        size:      0.3,
+        opacity:   0.5,
+        color:     "#ffffff",
+        fallSpeed: [1.5, 3],
+        windSpeed: 2,
+      },
+    ],
+    [count]
   );
-}
-
-export default function Snowstorm({
-  count = 8000,
-  playerPosition,
-}: SnowstormProps) {
-  const circleTexture = useMemo(() => createCircleTexture(), []);
 
   return (
     <>
-      <BlizzardLayer count={count} playerPosition={playerPosition} circleTexture={circleTexture} />
-      <GentleSnowLayer count={Math.floor(count * 0.4)} playerPosition={playerPosition} circleTexture={circleTexture} />
-      <NearCameraSnowLayer count={400} playerPosition={playerPosition} circleTexture={circleTexture} />
+      {layers.map((config, i) => (
+        <ShaderSnowLayer key={i} config={config} playerPositionRef={playerPositionRef} />
+      ))}
     </>
   );
 }
