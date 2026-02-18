@@ -9,6 +9,7 @@ interface UsePositionalAudioProps {
   listenerPosition: Vector3;
   maxDistance?: number;
   refDistance?: number;
+  minVolume?: number;
 }
 
 export default function usePositionalAudio({
@@ -17,6 +18,7 @@ export default function usePositionalAudio({
   listenerPosition,
   maxDistance = 50,
   refDistance = 5,
+  minVolume = 0,
 }: UsePositionalAudioProps) {
   const audioContextRef = useRef<AudioContext | null>(null);
   const pannerRef = useRef<PannerNode | null>(null);
@@ -186,8 +188,8 @@ export default function usePositionalAudio({
         );
         const md = maxDistanceRef.current;
         const t = Math.min(distance / md, 1);
-        // Cubic falloff: near=loud, mid=steep drop, far=nearly silent
-        const volume = t >= 1 ? 0 : Math.pow(1 - t, 3);
+        // Cubic falloff with minimum volume floor
+        const volume = Math.max(minVolume, t >= 1 ? 0 : Math.pow(1 - t, 1.5));
         gain.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
       }
 

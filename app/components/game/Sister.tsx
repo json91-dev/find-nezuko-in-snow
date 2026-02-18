@@ -11,13 +11,14 @@ interface SisterProps {
   position: Vector3;
   playerPosition: Vector3;
   onPositionUpdate?: (position: Vector3) => void;
+  visible?: boolean;
 }
 
 const MOVE_SPEED = 2.5;
 const DIRECTION_CHANGE_INTERVAL = 4000;
 const MAP_BOUNDARY = 80;
 
-export default function Sister({ position, playerPosition, onPositionUpdate }: SisterProps) {
+export default function Sister({ position, playerPosition, onPositionUpdate, visible = true }: SisterProps) {
   const groupRef = useRef<Group>(null);
   const { scene, animations } = useGLTF("/model/sister.glb");
   const { actions, names } = useAnimations(animations, groupRef);
@@ -43,8 +44,9 @@ export default function Sister({ position, playerPosition, onPositionUpdate }: S
     ],
     sourcePosition: audioPosition,
     listenerPosition: playerPosition,
-    maxDistance: 50,
+    maxDistance: 300,
     refDistance: 5,
+    minVolume: 0.2,
   });
 
   useEffect(() => {
@@ -107,7 +109,7 @@ export default function Sister({ position, playerPosition, onPositionUpdate }: S
   });
 
   return (
-    <group ref={groupRef} position={[position.x, position.y, position.z]}>
+    <group ref={groupRef} position={[position.x, position.y, position.z]} visible={visible}>
       <primitive object={scene} scale={1} />
     </group>
   );

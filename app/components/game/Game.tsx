@@ -25,10 +25,11 @@ interface GameProps {
   onLoadingProgress?: (progress: number) => void;
 }
 
-const DEMON_COUNT = 1;
+const DEMON_COUNT = 20;
 const DEMON_KILL_DISTANCE = 1.5;
 const DEMON_DARK_DISTANCE = 15;
 const SISTER_CLEAR_DISTANCE = 1.2;
+const SISTER_VISIBLE_DISTANCE = 12; // Distance at which sister becomes visible
 
 // Track loading progress and report to parent
 function LoadingTracker({ onProgress }: { onProgress: (progress: number) => void }) {
@@ -53,6 +54,7 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
   const [miniGameActive, setMiniGameActive] = useState(false);
   const [killedDemons, setKilledDemons] = useState<Set<number>>(() => new Set());
   const miniGameDemonId = useRef<number | null>(null);
+  const [sisterDiscovered, setSisterDiscovered] = useState(false);
 
   // Sister initial position - random spawn 30-50m away
   const [sisterInitialPosition] = useState<Vector3>(() => {
@@ -112,6 +114,11 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
       // Sister distance
       const sisterDist = position.distanceTo(sisterCurrentPosition);
       setDistanceToSister(sisterDist);
+
+      // Mark sister as discovered when within SISTER_VISIBLE_DISTANCE
+      if (sisterDist <= SISTER_VISIBLE_DISTANCE && !sisterDiscovered) {
+        setSisterDiscovered(true);
+      }
 
       // Check clear condition
       if (sisterDist <= SISTER_CLEAR_DISTANCE && startTimeRef.current) {
@@ -207,6 +214,7 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
             position={sisterInitialPosition}
             playerPosition={playerPosition}
             onPositionUpdate={handleSisterPositionUpdate}
+            visible={distanceToSister <= SISTER_VISIBLE_DISTANCE}
           />
           {demonInitialPositions.map((pos, i) => (
             !killedDemons.has(i) && (
@@ -238,6 +246,7 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
           playerFacing={playerFacing}
           sisterPosition={sisterCurrentPosition}
           demonPositions={demonPositions}
+          sisterDiscovered={sisterDiscovered}
         />
       )}
       {miniGameActive && (

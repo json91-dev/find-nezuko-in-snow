@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Vector3 } from "three";
 
 interface MinimapProps {
@@ -10,10 +10,15 @@ interface MinimapProps {
   sisterPosition: Vector3;
   demonPositions: Vector3[];
   mapSize?: number;
+  sisterDiscovered?: boolean;
 }
 
 const MINIMAP_SIZE = 120;
 const MINIMAP_RADIUS = MINIMAP_SIZE / 2;
+const HINT_RANGE = 12; // m (matches SISTER_VISIBLE_DISTANCE from Game.tsx)
+const HINT_FIRST_DELAY = 5000; // 5 seconds - first hint
+const HINT_INTERVAL = 30000; // 30 seconds - interval after first
+const HINT_DURATION = 1500; // 1.5 seconds
 
 export default function Minimap({
   playerPosition,
@@ -22,8 +27,28 @@ export default function Minimap({
   sisterPosition,
   demonPositions,
   mapSize = 160,
+  sisterDiscovered = false,
 }: MinimapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [showHint, setShowHint] = useState(false);
+
+  // Hint flash timer - first at 5 seconds, then every 10 seconds for 1.5 seconds
+  useEffect(() => {
+    const firstTimer = setTimeout(() => {
+      setShowHint(true);
+      setTimeout(() => setShowHint(false), HINT_DURATION);
+
+      // Then repeat every 10 seconds
+      const interval = setInterval(() => {
+        setShowHint(true);
+        setTimeout(() => setShowHint(false), HINT_DURATION);
+      }, HINT_INTERVAL);
+
+      return () => clearInterval(interval);
+    }, HINT_FIRST_DELAY);
+
+    return () => clearTimeout(firstTimer);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -80,6 +105,25 @@ export default function Minimap({
       return { x: MINIMAP_RADIUS + relX, z: MINIMAP_RADIUS + relZ };
     };
 
+    // Draw hint circle (yellow full circle around sister) - shows every 10 seconds
+    if (showHint) {
+      const hintRadius = HINT_RANGE * scale; // Convert world distance to minimap scale
+      const sisterPos = toMinimap(sisterPosition);
+
+      ctx.fillStyle = "rgba(255, 200, 0, 0.35)"; // Yellow semi-transparent
+      ctx.beginPath();
+      // Draw full circle around sister's position
+      ctx.arc(sisterPos.x, sisterPos.z, hintRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw circle outline for better visibility
+      ctx.strokeStyle = "rgba(255, 200, 0, 0.6)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(sisterPos.x, sisterPos.z, hintRadius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     // Draw demons (red dots)
     demonPositions.forEach((demonPos) => {
       const { x, z } = toMinimap(demonPos);
@@ -89,12 +133,14 @@ export default function Minimap({
       ctx.fill();
     });
 
-    // Draw sister (same color as demons for difficulty)
-    const sis = toMinimap(sisterPosition);
-    ctx.fillStyle = "rgba(220, 38, 38, 0.8)";
-    ctx.beginPath();
-    ctx.arc(sis.x, sis.z, 3, 0, Math.PI * 2);
-    ctx.fill();
+    // Draw sister (blue dot only if discovered, otherwise hidden)
+    if (sisterDiscovered) {
+      const sis = toMinimap(sisterPosition);
+      ctx.fillStyle = "rgba(59, 130, 246, 0.9)"; // Blue
+      ctx.beginPath();
+      ctx.arc(sis.x, sis.z, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore(); // undo compass rotation
 
@@ -123,7 +169,7 @@ export default function Minimap({
     ctx.beginPath();
     ctx.arc(MINIMAP_RADIUS, MINIMAP_RADIUS, MINIMAP_RADIUS - 1, 0, Math.PI * 2);
     ctx.stroke();
-  }, [playerPosition, playerRotation, playerFacing, sisterPosition, demonPositions, mapSize]);
+  }, [playerPosition, playerRotation, playerFacing, sisterPosition, demonPositions, mapSize, sisterDiscovered, showHint]);
 
   return (
     <div className="pointer-events-none absolute bottom-6 right-6 z-20">
