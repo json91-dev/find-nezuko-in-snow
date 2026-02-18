@@ -16,14 +16,29 @@ export default function ColorHint({
   demonMaxDistance = 15,
 }: ColorHintProps) {
   const style = useMemo(() => {
-    // Sister warmth (existing)
-    const normalizedDistance = Math.min(distance / maxDistance, 1);
-    const warmth = 1 - normalizedDistance;
+    // Sister: like demon — only when close. "Light" bright yellow, no tint when far.
+    const sisterEffectDistance = 18; // effect starts inside this range
+    if (distance >= sisterEffectDistance) {
+      return {
+        position: "fixed" as const,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "transparent",
+        pointerEvents: "none" as const,
+        zIndex: 10,
+        transition: "background-color 0.5s ease-out",
+      };
+    }
+    const t = 1 - distance / sisterEffectDistance; // 0 far, 1 at sister
+    const strength = Math.pow(t, 0.65); // closer = brighter, hopeful ramp
 
-    const r = Math.round(100 + warmth * 155);
-    const g = Math.round(150 + warmth * 30);
-    const b = Math.round(255 - warmth * 155);
-    const opacity = 0.1 + warmth * 0.1;
+    // Warm golden-white + 클리어 느낌의 은은한 핑크 (가까울수록 더 밝고 희망찬 빛)
+    const r = 255;
+    const g = Math.round(252 - strength * 14); // 가까울수록 살짝 핑크 (255→238)
+    const b = Math.round(230 + strength * 15); // 가까울수록 밝은 핑크빛 (230→245)
+    const opacity = strength * 0.4; // 가까울수록 더 환하게
 
     return {
       position: "fixed" as const,
@@ -41,10 +56,16 @@ export default function ColorHint({
   const demonStyle = useMemo(() => {
     if (demonDistance >= demonMaxDistance) return null;
 
-    // Closer = more dark/red
-    const proximity = 1 - Math.min(demonDistance / demonMaxDistance, 1);
-    const darkness = proximity * 0.6;
-    const redness = proximity * 0.15;
+    // Far: blood tint. Near: stronger vignette/darkness.
+    const t = 1 - Math.min(demonDistance / demonMaxDistance, 1);
+    // Start blood tint only after a threshold so far distances don't look red.
+    const bloodStart = 0.28; // 0..1 (proximity). Higher = later start.
+    const bloodT = Math.max((t - bloodStart) / (1 - bloodStart), 0);
+    const blood = Math.pow(bloodT, 0.65);
+    const near = Math.pow(t, 2.2); // ramps late (so true darkness is mainly up close)
+
+    const bloodAlpha = blood * 0.65;
+    const vignetteAlpha = near * 0.65;
 
     return {
       position: "fixed" as const,
@@ -52,7 +73,7 @@ export default function ColorHint({
       left: 0,
       right: 0,
       bottom: 0,
-      background: `radial-gradient(ellipse at center, rgba(${Math.round(redness * 255)}, 0, 0, ${darkness * 0.3}) 0%, rgba(0, 0, 0, ${darkness}) 100%)`,
+      background: `radial-gradient(ellipse at center, rgba(255, 20, 20, ${bloodAlpha * 0.55}) 0%, rgba(90, 0, 0, ${bloodAlpha * 0.75 + vignetteAlpha}) 100%)`,
       pointerEvents: "none" as const,
       zIndex: 11,
       transition: "all 0.5s ease-out",

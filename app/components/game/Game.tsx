@@ -25,7 +25,7 @@ interface GameProps {
   onLoadingProgress?: (progress: number) => void;
 }
 
-const DEMON_COUNT = 20;
+const DEMON_COUNT = 1;
 const DEMON_KILL_DISTANCE = 1.5;
 const DEMON_DARK_DISTANCE = 15;
 const SISTER_CLEAR_DISTANCE = 1.2;
