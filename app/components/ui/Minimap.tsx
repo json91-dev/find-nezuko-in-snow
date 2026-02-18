@@ -133,8 +133,9 @@ export default function Minimap({
       ctx.fill();
     });
 
-    // Draw sister (blue dot only if discovered, otherwise hidden)
-    if (sisterDiscovered) {
+    // Draw sister (blue dot only when discovered AND within HINT_RANGE)
+    const distanceToSister = playerPosition.distanceTo(sisterPosition);
+    if (sisterDiscovered && distanceToSister <= HINT_RANGE) {
       const sis = toMinimap(sisterPosition);
       ctx.fillStyle = "rgba(59, 130, 246, 0.9)"; // Blue
       ctx.beginPath();

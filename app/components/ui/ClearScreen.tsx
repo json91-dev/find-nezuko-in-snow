@@ -2,6 +2,42 @@
 
 import { useState } from "react";
 
+function SnowParticles() {
+  const [particles] = useState(() =>
+    Array.from({ length: 60 }, (_, i) => {
+      const duration = 8 + Math.random() * 12;
+      return {
+        id: i,
+        left: Math.random() * 100,
+        size: (2 + Math.random() * 4) * 1.4,
+        duration,
+        delay: -(Math.random() * duration),
+        drift: Math.random() > 0.5,
+        opacity: 0.3 + Math.random() * 0.5,
+      };
+    })
+  );
+
+  return (
+    <>
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className={p.drift ? "snow-particle-drift" : "snow-particle"}
+          style={{
+            left: `${p.left}%`,
+            width: p.size,
+            height: p.size,
+            animationDuration: `${p.duration}s`,
+            animationDelay: `${p.delay}s`,
+            opacity: p.opacity,
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
 interface ClearScreenProps {
   clearTime: number;
   onRestart: () => void;
@@ -31,6 +67,7 @@ export default function ClearScreen({
 
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center overflow-hidden bg-gradient-to-b from-[#1a1520] via-[#2a1f30] to-[#1a1520]">
+      <SnowParticles />
       {/* Warm light particles */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,180,50,0.1)_0%,transparent_60%)]" />
 
