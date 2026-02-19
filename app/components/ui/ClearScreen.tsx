@@ -49,7 +49,8 @@ interface ClearScreenProps {
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
-  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  const cs = Math.floor((seconds % 1) * 100);
+  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}.${cs.toString().padStart(2, "0")}`;
 }
 
 export default function ClearScreen({
@@ -62,7 +63,8 @@ export default function ClearScreen({
   const [nickname, setNickname] = useState("");
 
   const handleSaveRecord = () => {
-    onSaveRecord(nickname || "익명");
+    if (!nickname.trim()) return;
+    onSaveRecord(nickname.trim());
   };
 
   return (
@@ -107,7 +109,8 @@ export default function ClearScreen({
                 />
                 <button
                   onClick={handleSaveRecord}
-                  className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-200 transition-colors hover:bg-amber-500/20"
+                  disabled={!nickname.trim()}
+                  className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-200 transition-colors hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   저장
                 </button>

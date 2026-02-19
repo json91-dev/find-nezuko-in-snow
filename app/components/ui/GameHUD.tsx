@@ -9,7 +9,8 @@ interface GameHUDProps {
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
-  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  const cs = Math.floor((seconds % 1) * 100);
+  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}.${cs.toString().padStart(2, "0")}`;
 }
 
 let elapsedSeconds = 0;
@@ -45,8 +46,9 @@ export default function GameHUD({ isPlaying }: GameHUDProps) {
 
     function tick() {
       if (startTimeRef.current) {
-        const newElapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        if (newElapsed !== elapsedSeconds) {
+        const newElapsed = (Date.now() - startTimeRef.current) / 1000;
+        // 10ms(1/100초) 단위로 업데이트
+        if (Math.floor(newElapsed * 100) !== Math.floor(elapsedSeconds * 100)) {
           elapsedSeconds = newElapsed;
           notify();
         }

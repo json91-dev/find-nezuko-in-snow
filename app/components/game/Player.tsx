@@ -115,6 +115,8 @@ export default function Player({ onPositionUpdate, isPlaying }: PlayerProps) {
     let lastTouchX = 0;
 
     const handleTouchStart = (e: TouchEvent) => {
+      // UI 버튼(뮤트 등)은 터치 이벤트 무시 → 모바일에서 버튼 클릭 가능하게
+      if ((e.target as HTMLElement).closest("button")) return;
       e.preventDefault();
       isMouseDown.current = true;
       isTouchInput.current = true;
@@ -129,6 +131,7 @@ export default function Player({ onPositionUpdate, isPlaying }: PlayerProps) {
       lastTouchX = e.touches[0].clientX;
     };
     const handleTouchEnd = (e: TouchEvent) => {
+      if ((e.target as HTMLElement).closest("button")) return;
       e.preventDefault();
       if (e.touches.length === 0) {
         isMouseDown.current = false;
