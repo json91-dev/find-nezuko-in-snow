@@ -147,14 +147,27 @@ export default function ClearScreen({
                     process.env.NEXT_PUBLIC_KAKAO_JS_KEY as string
                   );
                 }
+                const siteUrl = window.location.origin;
                 window.Kakao.Share.sendDefault({
-                  objectType: "text",
-                  text: `❄️ 눈보라 속 네즈코 찾기\n${formatTime(clearTime)}만에 네즈코를 찾았습니다! 당신도 도전해보세요!`,
-                  link: {
-                    mobileWebUrl: window.location.href,
-                    webUrl: window.location.href,
+                  objectType: "feed",
+                  content: {
+                    title: "눈보라 속 네즈코 찾기",
+                    description: `❄️ ${formatTime(clearTime)}만에 네즈코를 찾았습니다! 당신도 도전해보세요!`,
+                    imageUrl: `${siteUrl}/game.png`,
+                    link: {
+                      mobileWebUrl: siteUrl,
+                      webUrl: siteUrl,
+                    },
                   },
-                  buttonTitle: "나도 도전하기",
+                  buttons: [
+                    {
+                      title: "나도 도전하기",
+                      link: {
+                        mobileWebUrl: siteUrl,
+                        webUrl: siteUrl,
+                      },
+                    },
+                  ],
                 });
               }}
             >
