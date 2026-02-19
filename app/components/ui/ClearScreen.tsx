@@ -41,8 +41,8 @@ function SnowParticles() {
 interface ClearScreenProps {
   clearTime: number;
   onRestart: () => void;
-  onSaveRecord: (nickname: string) => void;
-  onShowRanking: () => void;
+  onSaveRecord: (nickname: string) => Promise<void>;
+  onShowRanking: () => Promise<void>;
   isRecordSaved: boolean;
 }
 

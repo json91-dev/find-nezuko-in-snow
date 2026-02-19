@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { supabase } from "@/lib/supabase";
 
 export interface RankingRecord {
   id: string;
@@ -9,54 +10,65 @@ export interface RankingRecord {
   date: string;
 }
 
-const STORAGE_KEY = "snowstorm-game-rankings";
 const MAX_RANKINGS = 10;
 
-function loadRankings(): RankingRecord[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return JSON.parse(stored);
-  } catch (error) {
-    console.error("Failed to load rankings:", error);
-  }
-  return [];
+function rowToRecord(row: {
+  id: string;
+  nickname: string;
+  time: number;
+  created_at: string;
+}): RankingRecord {
+  return {
+    id: row.id,
+    nickname: row.nickname,
+    time: row.time,
+    date: row.created_at,
+  };
 }
 
 export default function useRanking() {
-  const [rankings, setRankings] = useState<RankingRecord[]>(loadRankings);
+  const [rankings, setRankings] = useState<RankingRecord[]>([]);
 
-  // Save rankings to localStorage
-  const saveRankings = useCallback((newRankings: RankingRecord[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newRankings));
-      setRankings(newRankings);
-    } catch (error) {
-      console.error("Failed to save rankings:", error);
+  // Fetch rankings from Supabase
+  const fetchRankings = useCallback(async (): Promise<RankingRecord[]> => {
+    const { data, error } = await supabase
+      .from("rankings")
+      .select("*")
+      .order("time", { ascending: true })
+      .limit(MAX_RANKINGS);
+
+    if (error) {
+      console.error("Failed to fetch rankings:", error);
+      return [];
     }
+
+    const records = (data ?? []).map(rowToRecord);
+    setRankings(records);
+    return records;
   }, []);
 
-  // Add a new record
+  // Add a new record, returns { id, rank }
   const addRecord = useCallback(
-    (nickname: string, time: number): number => {
-      const newRecord: RankingRecord = {
-        id: Date.now().toString(),
-        nickname: nickname.trim() || "익명",
-        time,
-        date: new Date().toISOString(),
-      };
+    async (
+      nickname: string,
+      time: number
+    ): Promise<{ id: string; rank: number }> => {
+      const { data, error } = await supabase
+        .from("rankings")
+        .insert({ nickname: nickname.trim() || "익명", time })
+        .select()
+        .single();
 
-      const updatedRankings = [...rankings, newRecord]
-        .sort((a, b) => a.time - b.time)
-        .slice(0, MAX_RANKINGS);
+      if (error || !data) {
+        console.error("Failed to save ranking:", error);
+        return { id: "", rank: -1 };
+      }
 
-      saveRankings(updatedRankings);
-
-      // Return the rank (1-based index)
-      const rank = updatedRankings.findIndex((r) => r.id === newRecord.id);
-      return rank !== -1 ? rank + 1 : -1;
+      const updated = await fetchRankings();
+      const rank = updated.findIndex((r) => r.id === data.id);
+      return { id: data.id, rank: rank !== -1 ? rank + 1 : -1 };
     },
-    [rankings, saveRankings]
+    [fetchRankings]
   );
 
   // Get all rankings
@@ -75,6 +87,7 @@ export default function useRanking() {
 
   return {
     rankings,
+    fetchRankings,
     addRecord,
     getRankings,
     wouldMakeLeaderboard,

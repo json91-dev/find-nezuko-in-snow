@@ -34,7 +34,7 @@ export default function Home() {
   const [transitionType, setTransitionType] = useState<"clear" | "gameover" | null>(null);
   const [pendingTime, setPendingTime] = useState(0);
 
-  const { rankings, addRecord } = useRanking();
+  const { rankings, addRecord, fetchRankings } = useRanking();
 
   useBGM({
     src: "/audio/bgm.MP3",
@@ -110,18 +110,18 @@ export default function Home() {
   }, []);
 
   const handleSaveRecord = useCallback(
-    (nickname: string) => {
-      addRecord(nickname, clearTime);
+    async (nickname: string) => {
+      const { id } = await addRecord(nickname, clearTime);
       setIsRecordSaved(true);
-      const newRecordId = Date.now().toString();
-      setCurrentRecordId(newRecordId);
+      setCurrentRecordId(id || undefined);
     },
     [addRecord, clearTime]
   );
 
-  const handleShowRanking = useCallback(() => {
+  const handleShowRanking = useCallback(async () => {
+    await fetchRankings();
     setShowRanking(true);
-  }, []);
+  }, [fetchRankings]);
 
   const handleCloseRanking = useCallback(() => {
     setShowRanking(false);
