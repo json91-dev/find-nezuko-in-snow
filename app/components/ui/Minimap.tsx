@@ -17,7 +17,7 @@ const MINIMAP_SIZE = 120;
 const MINIMAP_RADIUS = MINIMAP_SIZE / 2;
 const HINT_RANGE = 12; // m (matches SISTER_VISIBLE_DISTANCE from Game.tsx)
 const HINT_FIRST_DELAY = 3000; // 3 seconds - first hint
-const HINT_INTERVAL = 250000; // 25 seconds - interval after first
+const HINT_INTERVAL = 25000; // 25 seconds - interval after first
 const HINT_DURATION = 1500; // 1.5 seconds
 
 export default function Minimap({
