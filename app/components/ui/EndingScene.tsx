@@ -190,60 +190,117 @@ function CherryBlossomParticles() {
   );
 }
 
-// Snow particles (gameover ending)
+// Snow particles (gameover ending) — density/wind matched to in-game Snowstorm feel
 function SnowParticles() {
   const pointsRef = useRef<THREE.Points>(null);
-  const count = 100;
+  const nearRef   = useRef<THREE.Points>(null);
+  const count     = 600;
+  const nearCount = 80;
   const circleTexture = useMemo(() => createCircleTexture(), []);
 
+  // Main blizzard layer: wind + fall
   const { positions, velocities } = useMemo(() => {
     const pos = new Float32Array(count * 3);
-    const vel = new Float32Array(count);
+    const vel = new Float32Array(count * 3); // x(wind), y(fall), z
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 12;
-      pos[i * 3 + 1] = Math.random() * 8 + 2;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 8;
-      vel[i] = -(0.5 + Math.random() * 0.8);
+      pos[i * 3]     = (Math.random() - 0.5) * 14;
+      pos[i * 3 + 1] = Math.random() * 10;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 10;
+      vel[i * 3]     = (Math.random() - 0.5) * 0.5; // horizontal wind
+      vel[i * 3 + 1] = -(0.5 + Math.random() * 0.8); // fall speed
+      vel[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
     }
     return { positions: pos, velocities: vel };
   }, []);
 
-  useFrame((_, delta) => {
-    if (!pointsRef.current) return;
-    const posAttr = pointsRef.current.geometry.attributes.position;
-    const posArray = posAttr.array as Float32Array;
-
-    for (let i = 0; i < count; i++) {
-      posArray[i * 3 + 1] += velocities[i] * delta;
-      if (posArray[i * 3 + 1] < -1) {
-        posArray[i * 3] = (Math.random() - 0.5) * 12;
-        posArray[i * 3 + 1] = Math.random() * 4 + 6;
-        posArray[i * 3 + 2] = (Math.random() - 0.5) * 8;
-      }
+  // Near-camera layer: bigger, faster (depth feel)
+  const { positions: nearPos, velocities: nearVel } = useMemo(() => {
+    const pos = new Float32Array(nearCount * 3);
+    const vel = new Float32Array(nearCount * 3);
+    for (let i = 0; i < nearCount; i++) {
+      pos[i * 3]     = (Math.random() - 0.5) * 8;
+      pos[i * 3 + 1] = Math.random() * 6;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 4;
+      vel[i * 3]     = (Math.random() - 0.5) * 1.0;
+      vel[i * 3 + 1] = -(0.8 + Math.random() * 1.0);
+      vel[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
     }
-    posAttr.needsUpdate = true;
+    return { positions: pos, velocities: vel };
+  }, []);
+
+  useFrame(({ clock }, delta) => {
+    // Main layer
+    if (pointsRef.current) {
+      const posAttr = pointsRef.current.geometry.attributes.position;
+      const posArray = posAttr.array as Float32Array;
+      const time = clock.elapsedTime;
+      for (let i = 0; i < count; i++) {
+        const sway = Math.sin(time * 0.5 + i) * 0.15;
+        posArray[i * 3]     += (velocities[i * 3] + sway) * delta;
+        posArray[i * 3 + 1] += velocities[i * 3 + 1] * delta;
+        posArray[i * 3 + 2] += velocities[i * 3 + 2] * delta;
+        if (posArray[i * 3 + 1] < -1) {
+          posArray[i * 3]     = (Math.random() - 0.5) * 14;
+          posArray[i * 3 + 1] = 8 + Math.random() * 4;
+          posArray[i * 3 + 2] = (Math.random() - 0.5) * 10;
+        }
+      }
+      posAttr.needsUpdate = true;
+    }
+
+    // Near layer
+    if (nearRef.current) {
+      const posAttr = nearRef.current.geometry.attributes.position;
+      const posArray = posAttr.array as Float32Array;
+      for (let i = 0; i < nearCount; i++) {
+        posArray[i * 3]     += nearVel[i * 3] * delta;
+        posArray[i * 3 + 1] += nearVel[i * 3 + 1] * delta;
+        posArray[i * 3 + 2] += nearVel[i * 3 + 2] * delta;
+        if (posArray[i * 3 + 1] < -1) {
+          posArray[i * 3]     = (Math.random() - 0.5) * 8;
+          posArray[i * 3 + 1] = 5 + Math.random() * 3;
+          posArray[i * 3 + 2] = (Math.random() - 0.5) * 4;
+        }
+      }
+      posAttr.needsUpdate = true;
+    }
   });
 
   return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positions, 3]}
-          count={count}
+    <>
+      {/* Main blizzard layer */}
+      <points ref={pointsRef}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[positions, 3]} count={count} />
+        </bufferGeometry>
+        <pointsMaterial
+          color="#ffffff"
+          size={0.08}
+          transparent
+          opacity={0.8}
+          depthWrite={false}
+          sizeAttenuation
+          map={circleTexture}
+          alphaTest={0.01}
         />
-      </bufferGeometry>
-      <pointsMaterial
-        color="#ffffff"
-        size={0.08}
-        transparent
-        opacity={0.6}
-        depthWrite={false}
-        sizeAttenuation
-        map={circleTexture}
-        alphaTest={0.01}
-      />
-    </points>
+      </points>
+      {/* Near-camera layer for depth */}
+      <points ref={nearRef}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[nearPos, 3]} count={nearCount} />
+        </bufferGeometry>
+        <pointsMaterial
+          color="#ffffff"
+          size={0.15}
+          transparent
+          opacity={0.4}
+          depthWrite={false}
+          sizeAttenuation
+          map={circleTexture}
+          alphaTest={0.01}
+        />
+      </points>
+    </>
   );
 }
 
