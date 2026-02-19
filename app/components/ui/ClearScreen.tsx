@@ -139,18 +139,40 @@ export default function ClearScreen({
               다시 하기
             </button>
             <button
-              className="w-full rounded-xl px-6 py-3 text-sm text-white/40 transition-colors hover:text-white/60"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] px-6 py-3 text-sm font-bold text-[#191919] transition-opacity hover:opacity-90 active:opacity-80"
               onClick={() => {
-                if (navigator.share) {
-                  navigator.share({
-                    title: "눈보라 속 네즈코 찾기",
-                    text: `${formatTime(clearTime)}에 네즈코을 찾았습니다!`,
-                    url: window.location.href,
-                  });
+                if (typeof window === "undefined" || !window.Kakao) return;
+                if (!window.Kakao.isInitialized()) {
+                  window.Kakao.init(
+                    process.env.NEXT_PUBLIC_KAKAO_JS_KEY as string
+                  );
                 }
+                window.Kakao.Share.sendDefault({
+                  objectType: "text",
+                  text: `❄️ 눈보라 속 네즈코 찾기\n${formatTime(clearTime)}만에 네즈코를 찾았습니다! 당신도 도전해보세요!`,
+                  link: {
+                    mobileWebUrl: window.location.href,
+                    webUrl: window.location.href,
+                  },
+                  buttonTitle: "나도 도전하기",
+                });
               }}
             >
-              공유하기
+              {/* Kakao 로고 */}
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 18 18"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M9 1C4.582 1 1 3.896 1 7.444c0 2.292 1.515 4.305 3.797 5.435L3.94 16.13a.25.25 0 0 0 .374.274L8.4 13.83c.196.015.394.022.6.022 4.418 0 8-2.896 8-6.408C17 3.896 13.418 1 9 1Z"
+                  fill="#191919"
+                />
+              </svg>
+              카카오톡으로 공유하기
             </button>
           </div>
 
