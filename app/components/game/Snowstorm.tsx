@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo } from "react";
+import { memo, useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -155,7 +155,7 @@ function ShaderSnowLayer({
   );
 }
 
-export default function Snowstorm({ count = 8000, playerPosition }: SnowstormProps) {
+export default memo(function Snowstorm({ count = 8000, playerPosition }: SnowstormProps) {
   const playerPositionRef = useRef(playerPosition.clone());
 
   // Sync playerPosition prop → ref each frame (no re-render needed)
@@ -210,4 +210,4 @@ export default function Snowstorm({ count = 8000, playerPosition }: SnowstormPro
       ))}
     </>
   );
-}
+});

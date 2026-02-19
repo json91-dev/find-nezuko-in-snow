@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { memo, useRef, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF, useAnimations } from "@react-three/drei";
 import { Group, Vector3, AnimationAction } from "three";
@@ -19,7 +19,7 @@ const MOVE_SPEED = 2.5;
 const DIRECTION_CHANGE_INTERVAL = 4000;
 const MAP_BOUNDARY = 80;
 
-export default function Sister({ position, playerPosition, onPositionUpdate, visible = true, muted = false }: SisterProps) {
+export default memo(function Sister({ position, playerPosition, onPositionUpdate, visible = true, muted = false }: SisterProps) {
   const groupRef = useRef<Group>(null);
   const { scene, animations } = useGLTF("/model/sister.glb");
   const { actions, names } = useAnimations(animations, groupRef);
@@ -34,8 +34,9 @@ export default function Sister({ position, playerPosition, onPositionUpdate, vis
     lastDirectionChange.current = Date.now();
   }, []);
 
-  // Use state for audio position so the hook gets updated values
-  const [audioPosition, setAudioPosition] = useState(() => position.clone());
+  // listenerPosRef points to Game's mutable playerPosRef.current — no state needed.
+  // playerPosition IS the mutable Vector3 from Game that gets .copy()'d in place each frame.
+  const listenerPosRef = useRef(playerPosition);
 
   usePositionalAudio({
     audioSources: [
@@ -43,8 +44,8 @@ export default function Sister({ position, playerPosition, onPositionUpdate, vis
       "/audio/sister-sound-2.mp3",
       "/audio/sister-sound-3.mp3",
     ],
-    sourcePosition: audioPosition,
-    listenerPosition: playerPosition,
+    sourcePositionRef: currentPositionRef,
+    listenerPositionRef: listenerPosRef,
     maxDistance: 300,
     refDistance: 5,
     minVolume: 0.2,
@@ -104,10 +105,7 @@ export default function Sister({ position, playerPosition, onPositionUpdate, vis
       groupRef.current.rotation.y = angle;
     }
 
-    // Update audio position for the positional audio hook
-    setAudioPosition(currentPositionRef.current.clone());
-
-    onPositionUpdate?.(currentPositionRef.current.clone());
+    onPositionUpdate?.(currentPositionRef.current);
   });
 
   return (
@@ -115,6 +113,6 @@ export default function Sister({ position, playerPosition, onPositionUpdate, vis
       <primitive object={scene} scale={1} />
     </group>
   );
-}
+});
 
 useGLTF.preload("/model/sister.glb");

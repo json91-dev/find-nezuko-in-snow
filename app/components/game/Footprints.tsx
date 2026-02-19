@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -61,7 +61,7 @@ interface FootprintData {
   active: boolean;
 }
 
-export default function Footprints({ playerPosition, isMoving }: FootprintsProps) {
+export default memo(function Footprints({ playerPosition, isMoving }: FootprintsProps) {
   const groupRef = useRef<THREE.Group>(null);
   const footprintsRef = useRef<FootprintData[]>([]);
   const lastPositionRef = useRef(new THREE.Vector3());
@@ -155,4 +155,4 @@ export default function Footprints({ playerPosition, isMoving }: FootprintsProps
   });
 
   return <group ref={groupRef} />;
-}
+});

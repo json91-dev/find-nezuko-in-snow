@@ -31,9 +31,8 @@ const DEMON_COUNT = 20;
 const DEMON_KILL_DISTANCE = 1.5;
 const DEMON_DARK_DISTANCE = 15;
 const SISTER_CLEAR_DISTANCE = 1.2;
-const SISTER_VISIBLE_DISTANCE = 12; // Distance at which sister becomes visible
+const SISTER_VISIBLE_DISTANCE = 12;
 
-// Track loading progress and report to parent
 function LoadingTracker({ onProgress }: { onProgress: (progress: number) => void }) {
   const { progress } = useProgress();
   useEffect(() => {
@@ -43,34 +42,20 @@ function LoadingTracker({ onProgress }: { onProgress: (progress: number) => void
 }
 
 export default function Game({ gameState, onClear, onGameOver, onLoadingProgress, muted = false, onToggleMute }: GameProps) {
-  const [playerPosition, setPlayerPosition] = useState<Vector3>(
-    () => new Vector3(0, 0, 0)
-  );
-  const [cameraRotation, setCameraRotation] = useState(0);
-  const [playerFacing, setPlayerFacing] = useState(0);
-  const [isMoving, setIsMoving] = useState(false);
-  const [distanceToSister, setDistanceToSister] = useState(50);
-  const [closestDemonDistance, setClosestDemonDistance] = useState(100);
-  const startTimeRef = useRef<number | null>(null);
-  const gameEndedRef = useRef(false);
-  const [miniGameActive, setMiniGameActive] = useState(false);
-  const [killedDemons, setKilledDemons] = useState<Set<number>>(() => new Set());
-  const miniGameDemonId = useRef<number | null>(null);
-  const [sisterDiscovered, setSisterDiscovered] = useState(false);
+  // ── Refs: values read inside useFrame / RAF — no re-renders needed ──
+  const playerPosRef = useRef(new Vector3(0, 0, 0));
+  const camRotRef    = useRef(0);
+  const isMovingRef  = useRef(false);
 
-  // Sister initial position - random spawn 30-50m away
-  const [sisterInitialPosition] = useState<Vector3>(() => {
+  const sisterInitialPosition = useRef((() => {
     const angle = Math.random() * Math.PI * 2;
     const distance = 30 + Math.random() * 20;
     return new Vector3(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
-  });
+  })()).current;
 
-  const [sisterCurrentPosition, setSisterCurrentPosition] = useState<Vector3>(
-    () => sisterInitialPosition.clone()
-  );
+  const sisterPosRef = useRef(sisterInitialPosition.clone());
 
-  // Demon initial positions - spread evenly around the map
-  const [demonInitialPositions] = useState<Vector3[]>(() => {
+  const demonInitialPositions = useRef((() => {
     const positions: Vector3[] = [];
     for (let i = 0; i < DEMON_COUNT; i++) {
       const angle = (Math.PI * 2 * i) / DEMON_COUNT + (Math.random() - 0.5) * 0.8;
@@ -78,24 +63,35 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
       positions.push(new Vector3(Math.cos(angle) * dist, 0, Math.sin(angle) * dist));
     }
     return positions;
-  });
+  })()).current;
 
-  // Track demon positions
-  const [demonPositions, setDemonPositions] = useState<Vector3[]>(
-    () => demonInitialPositions.map((p) => p.clone())
-  );
+  const demonPositionsRef = useRef<Vector3[]>(demonInitialPositions.map(p => p.clone()));
 
-  const handleSisterPositionUpdate = useCallback((position: Vector3) => {
-    setSisterCurrentPosition(position);
-  }, []);
+  // ── State: only what drives React DOM rendering ──
+  const [distanceToSister, setDistanceToSister]     = useState(50);
+  const [closestDemonDistance, setClosestDemonDistance] = useState(100);
+  const [isMoving, setIsMoving]                     = useState(false);
+  const [miniGameActive, setMiniGameActive]         = useState(false);
+  const [killedDemons, setKilledDemons]             = useState<Set<number>>(() => new Set());
+  const [sisterDiscovered, setSisterDiscovered]     = useState(false);
 
-  const handleDemonPositionUpdate = useCallback((id: number, position: Vector3) => {
-    setDemonPositions((prev) => {
-      const next = [...prev];
-      next[id] = position;
-      return next;
-    });
-  }, []);
+  // Throttled snapshot for Minimap (10 fps)
+  const [minimapState, setMinimapState] = useState(() => ({
+    playerPos:     new Vector3(),
+    playerRot:     0,
+    playerFacing:  0,
+    demonPositions: demonInitialPositions.map(p => p.clone()),
+    sisterPos:     sisterInitialPosition.clone(),
+  }));
+
+  // Throttle refs
+  const prevSisterDistRef  = useRef(50);
+  const prevDemonDistRef   = useRef(100);
+  const lastMinimapTimeRef = useRef(0);
+
+  const startTimeRef    = useRef<number | null>(null);
+  const gameEndedRef    = useRef(false);
+  const miniGameDemonId = useRef<number | null>(null);
 
   useEffect(() => {
     if (gameState === "playing" && startTimeRef.current === null) {
@@ -104,66 +100,94 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
     }
   }, [gameState]);
 
+  // ── Callbacks ──
+
+  // Sister writes position to ref — no setState
+  const handleSisterPositionUpdate = useCallback((position: Vector3) => {
+    sisterPosRef.current.copy(position);
+  }, []);
+
+  // Demons write to ref — no setState
+  const handleDemonPositionUpdate = useCallback((id: number, position: Vector3) => {
+    demonPositionsRef.current[id] = position;
+  }, []);
+
   const handlePositionUpdate = useCallback(
     (position: Vector3, camRotation: number, facing: number, moving: boolean) => {
-      setPlayerPosition(position);
-      setCameraRotation(camRotation);
-      setPlayerFacing(facing);
-      setIsMoving(moving);
+      // Mutate refs — zero re-renders from player movement
+      playerPosRef.current.copy(position);
+      camRotRef.current = camRotation;
+
+      // isMoving: only trigger re-render on actual change (start/stop)
+      if (moving !== isMovingRef.current) {
+        isMovingRef.current = moving;
+        setIsMoving(moving);
+      }
 
       if (gameState !== "playing" || gameEndedRef.current) return;
 
       // Sister distance
-      const sisterDist = position.distanceTo(sisterCurrentPosition);
-      setDistanceToSister(sisterDist);
+      const sisterDist = position.distanceTo(sisterPosRef.current);
 
-      // Mark sister as discovered when within SISTER_VISIBLE_DISTANCE
       if (sisterDist <= SISTER_VISIBLE_DISTANCE && !sisterDiscovered) {
         setSisterDiscovered(true);
       }
-
-      // Check clear condition
       if (sisterDist <= SISTER_CLEAR_DISTANCE && startTimeRef.current) {
         gameEndedRef.current = true;
-        const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
-        onClear(elapsedTime);
+        onClear((Date.now() - startTimeRef.current) / 1000);
         return;
       }
 
-      // Demon distances (skip killed demons)
+      // Demon distances
       let minDemonDist = Infinity;
       let closestDemonId = -1;
-      for (let i = 0; i < demonPositions.length; i++) {
+      for (let i = 0; i < demonPositionsRef.current.length; i++) {
         if (killedDemons.has(i)) continue;
-        const dist = position.distanceTo(demonPositions[i]);
-        if (dist < minDemonDist) {
-          minDemonDist = dist;
-          closestDemonId = i;
-        }
+        const dist = position.distanceTo(demonPositionsRef.current[i]);
+        if (dist < minDemonDist) { minDemonDist = dist; closestDemonId = i; }
       }
-      setClosestDemonDistance(minDemonDist);
 
-      // Check demon collision → trigger minigame
       if (minDemonDist <= DEMON_KILL_DISTANCE && !miniGameActive && closestDemonId >= 0) {
         miniGameDemonId.current = closestDemonId;
         setMiniGameActive(true);
       }
+
+      // ColorHint: throttle by 0.3-unit threshold
+      if (Math.abs(sisterDist - prevSisterDistRef.current) > 0.3) {
+        setDistanceToSister(sisterDist);
+        prevSisterDistRef.current = sisterDist;
+      }
+      if (minDemonDist !== Infinity && Math.abs(minDemonDist - prevDemonDistRef.current) > 0.3) {
+        setClosestDemonDistance(minDemonDist);
+        prevDemonDistRef.current = minDemonDist;
+      }
+
+      // Minimap: throttle to 10 fps
+      const nowMs = Date.now();
+      if (nowMs - lastMinimapTimeRef.current > 100) {
+        lastMinimapTimeRef.current = nowMs;
+        setMinimapState({
+          playerPos:    position.clone(),
+          playerRot:    camRotation,
+          playerFacing: facing,
+          demonPositions: demonPositionsRef.current
+            .map((p, i) => (killedDemons.has(i) ? null : p.clone()))
+            .filter((p): p is Vector3 => p !== null),
+          sisterPos: sisterPosRef.current.clone(),
+        });
+      }
     },
-    [sisterCurrentPosition, demonPositions, gameState, onClear, onGameOver, killedDemons, miniGameActive]
+    [gameState, onClear, killedDemons, miniGameActive, sisterDiscovered]
   );
 
   const handleLoadingProgress = useCallback(
-    (progress: number) => {
-      onLoadingProgress?.(progress);
-    },
+    (progress: number) => { onLoadingProgress?.(progress); },
     [onLoadingProgress]
   );
 
   const handleMiniGameSuccess = useCallback(() => {
     const demonId = miniGameDemonId.current;
-    if (demonId !== null) {
-      setKilledDemons(prev => new Set(prev).add(demonId));
-    }
+    if (demonId !== null) setKilledDemons(prev => new Set(prev).add(demonId));
     setMiniGameActive(false);
     miniGameDemonId.current = null;
   }, []);
@@ -173,21 +197,17 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
     miniGameDemonId.current = null;
     if (startTimeRef.current) {
       gameEndedRef.current = true;
-      const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
-      onGameOver(elapsedTime);
+      onGameOver((Date.now() - startTimeRef.current) / 1000);
     }
   }, [onGameOver]);
 
-  if (gameState === "start") {
-    return null;
-  }
+  if (gameState === "start") return null;
 
   const isActive = gameState === "playing";
 
   return (
     <>
       <Canvas
-        shadows
         camera={{ fov: 60, near: 0.1, far: 1000 }}
         style={{ width: "100vw", height: "100vh" }}
       >
@@ -195,12 +215,8 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
         <fog attach="fog" args={["#243447", 3, 28]} />
 
         <ambientLight intensity={0.35} />
-        <directionalLight
-          position={[10, 20, 10]}
-          intensity={0.5}
-          castShadow
-          shadow-mapSize={[2048, 2048]}
-        />
+        {/* Shadows removed — expensive 2048×2048 shadow map was major GPU overhead */}
+        <directionalLight position={[10, 20, 10]} intensity={0.5} />
 
         <LoadingTracker onProgress={handleLoadingProgress} />
         <Suspense fallback={null}>
@@ -208,13 +224,15 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
             onPositionUpdate={handlePositionUpdate}
             isPlaying={isActive && !miniGameActive}
           />
+          {/* Pass playerPosRef.current (mutable Vector3): 3D components read via closure in
+              useFrame without re-renders. cameraRotationRef passed for ThirdPersonCamera. */}
           <ThirdPersonCamera
-            playerPosition={playerPosition}
-            cameraRotation={cameraRotation}
+            playerPosition={playerPosRef.current}
+            cameraRotationRef={camRotRef}
           />
           <Sister
             position={sisterInitialPosition}
-            playerPosition={playerPosition}
+            playerPosition={playerPosRef.current}
             onPositionUpdate={handleSisterPositionUpdate}
             visible={distanceToSister <= SISTER_VISIBLE_DISTANCE}
             muted={muted}
@@ -226,15 +244,18 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
                 id={i}
                 initialPosition={pos}
                 onPositionUpdate={handleDemonPositionUpdate}
-                playerPosition={playerPosition}
+                playerPosition={playerPosRef.current}
               />
             )
           ))}
           <Ground />
-          {gameState !== "clear" && <Snowstorm playerPosition={playerPosition} />}
-          <Footprints playerPosition={playerPosition} isMoving={isMoving} />
+          {gameState !== "clear" && (
+            <Snowstorm playerPosition={playerPosRef.current} />
+          )}
+          <Footprints playerPosition={playerPosRef.current} isMoving={isMoving} />
         </Suspense>
       </Canvas>
+
       <ColorHint
         distance={distanceToSister}
         maxDistance={50}
@@ -244,11 +265,11 @@ export default function Game({ gameState, onClear, onGameOver, onLoadingProgress
       <GameHUD isPlaying={isActive} />
       {isActive && (
         <Minimap
-          playerPosition={playerPosition}
-          playerRotation={cameraRotation}
-          playerFacing={playerFacing}
-          sisterPosition={sisterCurrentPosition}
-          demonPositions={demonPositions}
+          playerPosition={minimapState.playerPos}
+          playerRotation={minimapState.playerRot}
+          playerFacing={minimapState.playerFacing}
+          sisterPosition={minimapState.sisterPos}
+          demonPositions={minimapState.demonPositions}
           sisterDiscovered={sisterDiscovered}
         />
       )}

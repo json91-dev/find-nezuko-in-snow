@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import type { RefObject } from "react";
 import { Vector3 } from "three";
 
 interface UsePositionalAudioProps {
   audioSources: string[];
-  sourcePosition: Vector3;
-  listenerPosition: Vector3;
+  sourcePositionRef: RefObject<Vector3>;
+  listenerPositionRef: RefObject<Vector3>;
   maxDistance?: number;
   refDistance?: number;
   minVolume?: number;
@@ -15,8 +16,8 @@ interface UsePositionalAudioProps {
 
 export default function usePositionalAudio({
   audioSources,
-  sourcePosition,
-  listenerPosition,
+  sourcePositionRef,
+  listenerPositionRef,
   maxDistance = 50,
   refDistance = 5,
   minVolume = 0,
@@ -32,12 +33,8 @@ export default function usePositionalAudio({
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
 
-  // Store positions in refs for RAF access
-  const sourcePositionRef = useRef(sourcePosition);
-  const listenerPositionRef = useRef(listenerPosition);
+  // maxDistance is constant; keep ref for RAF closure
   const maxDistanceRef = useRef(maxDistance);
-  sourcePositionRef.current = sourcePosition;
-  listenerPositionRef.current = listenerPosition;
   maxDistanceRef.current = maxDistance;
 
   const playNextSound = useCallback(() => {

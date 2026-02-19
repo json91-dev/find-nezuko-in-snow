@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useMemo, useState } from "react";
+import { memo, useRef, useEffect, useMemo, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF, useAnimations } from "@react-three/drei";
 import { Group, Vector3, AnimationAction } from "three";
@@ -20,7 +20,7 @@ const CHASE_DISTANCE = 15;
 const DIRECTION_CHANGE_INTERVAL = 6000;
 const MAP_BOUNDARY = 70;
 
-export default function BloodDemon({ initialPosition, onPositionUpdate, id, playerPosition }: BloodDemonProps) {
+export default memo(function BloodDemon({ initialPosition, onPositionUpdate, id, playerPosition }: BloodDemonProps) {
   const groupRef = useRef<Group>(null);
   const { scene, animations } = useGLTF("/model/blooddemon.glb");
   const clonedScene = useMemo(() => SkeletonUtils.clone(scene) as Group, [scene]);
@@ -118,5 +118,7 @@ export default function BloodDemon({ initialPosition, onPositionUpdate, id, play
     </group>
   );
 }
+
+});
 
 useGLTF.preload("/model/blooddemon.glb");
