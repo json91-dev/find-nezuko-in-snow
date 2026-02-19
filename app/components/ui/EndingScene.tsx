@@ -109,10 +109,26 @@ function WalkingCharacter({
   );
 }
 
+// Shared helper: soft circular sprite texture (prevents square particles)
+function createCircleTexture(): THREE.Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d")!;
+  const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gradient.addColorStop(0, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.4, "rgba(255,255,255,0.8)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(canvas);
+}
+
 // Cherry blossom particles (clear ending)
 function CherryBlossomParticles() {
   const pointsRef = useRef<THREE.Points>(null);
   const count = 200;
+  const circleTexture = useMemo(() => createCircleTexture(), []);
 
   const { positions, velocities, offsets } = useMemo(() => {
     const pos = new Float32Array(count * 3);
@@ -167,6 +183,8 @@ function CherryBlossomParticles() {
         opacity={0.8}
         depthWrite={false}
         sizeAttenuation
+        map={circleTexture}
+        alphaTest={0.01}
       />
     </points>
   );
@@ -176,6 +194,7 @@ function CherryBlossomParticles() {
 function SnowParticles() {
   const pointsRef = useRef<THREE.Points>(null);
   const count = 100;
+  const circleTexture = useMemo(() => createCircleTexture(), []);
 
   const { positions, velocities } = useMemo(() => {
     const pos = new Float32Array(count * 3);
@@ -221,6 +240,8 @@ function SnowParticles() {
         opacity={0.6}
         depthWrite={false}
         sizeAttenuation
+        map={circleTexture}
+        alphaTest={0.01}
       />
     </points>
   );
