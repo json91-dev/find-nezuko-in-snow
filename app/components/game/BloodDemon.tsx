@@ -117,8 +117,6 @@ export default memo(function BloodDemon({ initialPosition, onPositionUpdate, id,
       <primitive object={clonedScene} scale={1.3} />
     </group>
   );
-}
-
-});
+})
 
 useGLTF.preload("/model/blooddemon.glb");
